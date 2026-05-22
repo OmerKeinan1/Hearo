@@ -1,0 +1,39 @@
+import { useRouter } from "expo-router";
+import { Pressable, Text, View } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { useTranslation } from "react-i18next";
+
+export default function Welcome() {
+  const router = useRouter();
+  const { t } = useTranslation();
+
+  return (
+    <SafeAreaView className="flex-1 bg-bg">
+      <View className="flex-1 px-8 justify-between">
+        <View className="pt-24">
+          <View className="w-8 h-px bg-accent" />
+        </View>
+
+        <View className="flex-1 justify-center">
+          <Text
+            className="text-text font-display text-4xl leading-[44px]"
+            style={{ fontFamily: "FrankRuhlLibre_400Regular" }}
+          >
+            {t("welcome.line")}
+          </Text>
+        </View>
+
+        <View className="pb-12">
+          <Pressable onPress={() => router.push("/permissions")}>
+            <Text
+              className="text-accent text-2xl"
+              style={{ fontFamily: "Heebo_400Regular" }}
+            >
+              {t("welcome.begin")}  →
+            </Text>
+          </Pressable>
+        </View>
+      </View>
+    </SafeAreaView>
+  );
+}
