@@ -4,7 +4,11 @@ A quiet place to walk again.
 
 HearO is a mobile app for veterans living with combat-related PTSD. It uses gradual, consent-based sound exposure — ambient soundscapes layered with user-chosen trigger sounds — guided by a pre-recorded voice and watched over by the user's Apple Watch pulse. The user has two control layers: a manual intensity dial that's always reachable, and an automatic pulse-driven response that softens things when their body starts to spike. Both can only make things softer, never louder. No popups. No alarms. The app does the work the user shouldn't have to.
 
-> For visual design, screen specs, and frontend implementation details, see [FRONTEND.md](./FRONTEND.md).
+> Companion docs:
+> - [RATIONALE.md](./RATIONALE.md) — clinical and design reasoning, with citations.
+> - [FRONTEND.md](./FRONTEND.md) — visual design system + screen specs.
+> - [server/README.md](./server/README.md) — backend API contract (OpenAPI 3.1 at [server/openapi.yaml](./server/openapi.yaml)).
+> - [openspec/README.md](./openspec/README.md) — capability requirements in [openspec.dev](https://openspec.dev) form.
 
 ## The user we're designing for
 

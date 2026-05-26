@@ -8,30 +8,44 @@ Design system, screen specs, and implementation notes for the mobile app.
 
 ### Palette
 
+Two surfaces. Most of the app is a **warm light** theme (sand/paper). The Session screen is an intentional exception — it stays an **immersive dark** moment so the scene imagery reads as evening and the voice captions stay legible over it.
+
+**App surface — warm light (Welcome, Permissions, Setup, Home, After, crisis sheet):**
+
 ```
-bg          #241B16    warm cocoa-black — primary surface
-bg-elev     #2F231C    cards, sheets
-bg-deep     #1A1310    deepest tone — used at the bottom of scene
-                       overlays to anchor the foreground
-text        #EFE7DC    primary
-text-mute   #9A8E7F    secondary
-accent      #D89060    warm copper — actions, pulse, focus
-accent-soft #A26A40    same hue, darker — granted/disabled states
-critical    #B23A3A    crisis sheet only (never trigger sounds)
+bg          #F2EBDD    warm sand/paper — primary surface
+bg-elev     #E8DECB    cards, sheets
+text        #2E2823    warm near-black — primary text
+text-mute   #7A7060    secondary text
+accent      #C17A45    terracotta — actions, focus
+accent-soft #9A6238    same hue, darker — granted/disabled states
+sage        #7E9468    grounding secondary (nature/calm)
+critical    #BC6A4F    muted clay — crisis sheet only
 ```
 
-The palette is intentionally warm-leaning. Pure black reads as cold and clinical — the wrong feeling for an app a veteran opens at 2 a.m. The cocoa-black bg has just enough red-orange in the hex to feel held, not sterile, while staying dark enough that a scene image laid on top still reads as evening.
+**Scene surface — immersive dark (Session screen only):**
+
+```
+scene-text        #F4EEE3    primary text over scene imagery
+scene-text-mute   #CDBBA6    secondary text / breathing ring
+scene-accent      #E0A56B    brighter amber — pulse, slider, flash
+sceneOverlayBottom #140F0C   dark anchor at the bottom of scene overlays
+```
+
+**Why warm light, not dark.** Research on trauma-informed and mental-health UI consistently flags two things: near-black / gray-heavy palettes correlate with depressive affect, and red is *activating* for trauma survivors. So we moved off the near-black base entirely, softened the accent away from red-orange toward terracotta, replaced the alarming pure-red `critical` with a muted clay, and added sage — a calming cool note that keeps the all-warm palette from feeling one-dimensional. Warm earth tones (sand, stone, clay) read as "linen, candlelight" rather than "digital."
+
+**Why the Session screen stays dark.** It's the one immersive moment — an evening walk. The scene photo needs a dark overlay for the serif captions to be legible, and a bright photo-wash would kill the evening mood. So the session keeps its own light-on-dark `scene-*` palette while every other screen is light. This is a deliberate split, the same pattern as a photo viewer inside a light app.
 
 ### Scene backgrounds
 
-Session screens are *cinematic with restraint*: a scene image (river, park, cafe, road) sits behind the foreground, covered by a warm-dark gradient overlay strong enough that the imagery reads as mood, not as a photograph. The journal tone holds; the scene tells you *where* in a glance, the voice and breathing circle stay quiet on top.
+Session screens are *cinematic with restraint*: a scene image (river, park, cafe, road) sits behind the foreground, covered by a warm-dark gradient overlay strong enough that the imagery reads as mood, not as a photograph. The voice and breathing circle stay quiet on top.
 
 ```
 Image (cover)
 └── LinearGradient (top → middle → bottom)
-    top      tokens.bg     @ 0.82 alpha
-    middle   tokens.bg     @ 0.78 alpha
-    bottom   tokens.bgDeep @ 0.86 alpha
+    top      rgba(36, 27, 22, ~0.82)
+    middle   rgba(36, 27, 22, ~0.78)
+    bottom   rgba(26, 19, 16, ~0.86)   anchored toward sceneOverlayBottom
 
 During an auto-soften phase, overlay intensity bumps by ~0.08
 to match the quieter foreground state.
@@ -39,7 +53,7 @@ to match the quieter foreground state.
 
 Scenes available as `SceneKey`: `river`, `park`, `cafe`, `road`. Each has a scene-tint gradient (the color hint behind the imagery — green for park, cool teal for river, amber for cafe, dusty tan for road) so even if the network image fails to load, the screen still reads as the right *place*.
 
-The Welcome, Permissions, Setup, Home, and After screens use the flat `bg` color, not scene imagery. Only the Session screen is cinematic — the others are notebook pages.
+The Welcome, Permissions, Setup, Home, and After screens use the flat light `bg`, not scene imagery. Only the Session screen is cinematic — the others are notebook pages.
 
 ### Type
 

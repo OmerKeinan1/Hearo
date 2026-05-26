@@ -1,0 +1,563 @@
+openapi: 3.1.0
+info:
+  title: HearO API
+  version: 0.1.0
+  summary: Backend API for the HearO mobile app.
+  description: |
+    Contract between the HearO mobile UI (`/ui`) and the backend.
+    See `./README.md` for the human-readable companion and per-screen usage.
+
+    All endpoints require a Firebase ID token in the `Authorization: Bearer`
+    header. The backend verifies via Firebase Admin SDK on each request.
+
+servers:
+  - url: https://api.hearo.app/v1
+    description: Production
+  - url: https://api.staging.hearo.app/v1
+    description: Staging
+
+security:
+  - firebaseIdToken: []
+
+tags:
+  - name: identity
+    description: Who the user is.
+  - name: content
+    description: The catalog of scenes, sounds, and voice lines.
+  - name: preferences
+    description: User's persistent selections (scene, sounds, intensity ceilings).
+  - name: sessions
+    description: Records of completed walks.
+  - name: reminders
+    description: Daily push notification scheduling.
+
+paths:
+  /users/me:
+    get:
+      tags: [identity]
+      summary: Get the authenticated user's profile.
+      operationId: getMe
+      responses:
+        "200":
+          description: Current user.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    patch:
+      tags: [identity]
+      summary: Update the user's display name or language preference.
+      operationId: updateMe
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              properties:
+                displayName:
+                  type: string
+                  minLength: 1
+                  maxLength: 60
+                language:
+                  $ref: "#/components/schemas/Language"
+      responses:
+        "200":
+          description: Updated user.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /scenes:
+    get:
+      tags: [content]
+      summary: List all available scenes.
+      operationId: listScenes
+      security: []
+      responses:
+        "200":
+          description: Scenes.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Scene"
+
+  /sounds:
+    get:
+      tags: [content]
+      summary: List all available trigger sounds.
+      operationId: listSounds
+      security: []
+      responses:
+        "200":
+          description: Sounds.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Sound"
+
+  /voice-lines:
+    get:
+      tags: [content]
+      summary: List voice lines for a scene + phase + language.
+      operationId: listVoiceLines
+      security: []
+      parameters:
+        - in: query
+          name: scene
+          required: true
+          schema:
+            $ref: "#/components/schemas/SceneKey"
+        - in: query
+          name: lang
+          required: true
+          schema:
+            $ref: "#/components/schemas/Language"
+        - in: query
+          name: phase
+          required: false
+          schema:
+            type: string
+            enum: [opening, during, calming]
+      responses:
+        "200":
+          description: Voice lines.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/VoiceLine"
+
+  /preferences:
+    get:
+      tags: [preferences]
+      summary: Get the user's persistent preferences.
+      operationId: getPreferences
+      responses:
+        "200":
+          description: User preferences.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Preferences"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    put:
+      tags: [preferences]
+      summary: Replace the user's preferences.
+      operationId: putPreferences
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Preferences"
+      responses:
+        "200":
+          description: Updated preferences.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Preferences"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /sessions:
+    post:
+      tags: [sessions]
+      summary: Record a completed session.
+      operationId: createSession
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SessionInput"
+      responses:
+        "201":
+          description: Created.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SessionRecord"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    get:
+      tags: [sessions]
+      summary: List the user's recent sessions.
+      operationId: listSessions
+      parameters:
+        - in: query
+          name: limit
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+        - in: query
+          name: cursor
+          schema:
+            type: string
+            description: Opaque pagination cursor returned by the previous response.
+      responses:
+        "200":
+          description: Sessions.
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/SessionRecord"
+                  nextCursor:
+                    type: string
+                    nullable: true
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /reminders:
+    post:
+      tags: [reminders]
+      summary: Schedule the daily reminder push.
+      operationId: createReminder
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReminderInput"
+      responses:
+        "201":
+          description: Created.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Reminder"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    get:
+      tags: [reminders]
+      summary: List the user's reminders.
+      operationId: listReminders
+      responses:
+        "200":
+          description: Reminders.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Reminder"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /reminders/{id}:
+    delete:
+      tags: [reminders]
+      summary: Delete a reminder.
+      operationId: deleteReminder
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      responses:
+        "204":
+          description: Deleted.
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+components:
+  securitySchemes:
+    firebaseIdToken:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Firebase Authentication ID token, verified server-side via Firebase Admin SDK.
+
+  responses:
+    Unauthorized:
+      description: Missing or invalid Firebase ID token.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    BadRequest:
+      description: Request body failed validation.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    NotFound:
+      description: Resource not found.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+
+  schemas:
+    Language:
+      type: string
+      enum: [en, he]
+      description: ISO 639-1 language code. Only en and he are supported.
+
+    SceneKey:
+      type: string
+      enum: [river, park, cafe, road]
+
+    SoundKey:
+      type: string
+      enum: [motorcycle, helicopter, fireworks, siren, backfire, shouting]
+
+    LocalizedText:
+      type: object
+      additionalProperties: false
+      required: [en, he]
+      properties:
+        en:
+          type: string
+        he:
+          type: string
+
+    User:
+      type: object
+      additionalProperties: false
+      required: [id, displayName, language, createdAt]
+      properties:
+        id:
+          type: string
+          description: Firebase UID.
+        displayName:
+          type: string
+        language:
+          $ref: "#/components/schemas/Language"
+        createdAt:
+          type: string
+          format: date-time
+
+    Scene:
+      type: object
+      additionalProperties: false
+      required: [key, label, imageUrl, tint]
+      properties:
+        key:
+          $ref: "#/components/schemas/SceneKey"
+        label:
+          $ref: "#/components/schemas/LocalizedText"
+        imageUrl:
+          type: string
+          format: uri
+          description: CDN URL for the scene background image. ~900px wide is enough.
+        tint:
+          type: object
+          additionalProperties: false
+          required: [top, bottom]
+          properties:
+            top:
+              type: string
+              description: Hex color for the top of the fallback gradient.
+              example: "#3A4F4A"
+            bottom:
+              type: string
+              example: "#1A1310"
+
+    Sound:
+      type: object
+      additionalProperties: false
+      required: [key, label, audioUrl, durationMs]
+      properties:
+        key:
+          $ref: "#/components/schemas/SoundKey"
+        label:
+          $ref: "#/components/schemas/LocalizedText"
+        audioUrl:
+          type: string
+          format: uri
+          description: CDN URL for the sound clip (MP3, 3–5 seconds).
+        durationMs:
+          type: integer
+          minimum: 0
+
+    VoiceLine:
+      type: object
+      additionalProperties: false
+      required: [id, scene, phase, language, text, audioUrl]
+      properties:
+        id:
+          type: string
+        scene:
+          $ref: "#/components/schemas/SceneKey"
+        phase:
+          type: string
+          enum: [opening, during, calming]
+        language:
+          $ref: "#/components/schemas/Language"
+        text:
+          type: string
+          description: The line, rendered visually as captions.
+        audioUrl:
+          type: string
+          format: uri
+          description: CDN URL for the spoken audio.
+
+    Preferences:
+      type: object
+      additionalProperties: false
+      required: [scene, sounds, ceilings]
+      properties:
+        scene:
+          $ref: "#/components/schemas/SceneKey"
+        sounds:
+          type: array
+          description: Sounds the user has explicitly consented to encounter.
+          items:
+            $ref: "#/components/schemas/SoundKey"
+        ceilings:
+          type: object
+          description: |
+            The intensity ceiling the user landed on for each sound, in [0, 1].
+            Sounds the user has never adjusted are absent from the map.
+          additionalProperties:
+            type: number
+            minimum: 0
+            maximum: 1
+          example:
+            motorcycle: 0.42
+            siren: 0.6
+
+    PulseSample:
+      type: object
+      additionalProperties: false
+      required: [t, bpm]
+      properties:
+        t:
+          type: integer
+          description: Milliseconds since session start.
+        bpm:
+          type: integer
+          minimum: 30
+          maximum: 220
+
+    Reflection:
+      type: string
+      enum: [still-here, shaken, steady]
+      description: User's three-option answer on the After screen.
+
+    SessionInput:
+      type: object
+      additionalProperties: false
+      required: [scene, sounds, startedAt, endedAt, language, pulseSamples]
+      properties:
+        scene:
+          $ref: "#/components/schemas/SceneKey"
+        sounds:
+          type: array
+          items:
+            $ref: "#/components/schemas/SoundKey"
+        startedAt:
+          type: string
+          format: date-time
+        endedAt:
+          type: string
+          format: date-time
+        language:
+          $ref: "#/components/schemas/Language"
+        pulseSamples:
+          type: array
+          description: Pulse sampled at ~4 Hz across the session.
+          items:
+            $ref: "#/components/schemas/PulseSample"
+        ceilingsUsed:
+          type: object
+          description: |
+            The intensity ceiling that was in effect for each sound during this session.
+            Used to track how the user's tolerance evolves.
+          additionalProperties:
+            type: number
+            minimum: 0
+            maximum: 1
+        reflection:
+          $ref: "#/components/schemas/Reflection"
+
+    SessionRecord:
+      allOf:
+        - $ref: "#/components/schemas/SessionInput"
+        - type: object
+          required: [id]
+          properties:
+            id:
+              type: string
+
+    ReminderInput:
+      type: object
+      additionalProperties: false
+      required: [time, days, timezone]
+      properties:
+        time:
+          type: string
+          pattern: "^([01][0-9]|2[0-3]):[0-5][0-9]$"
+          description: 24-hour time, e.g. "18:30".
+        days:
+          type: array
+          minItems: 1
+          maxItems: 7
+          uniqueItems: true
+          items:
+            type: integer
+            minimum: 0
+            maximum: 6
+            description: 0 = Sunday, 6 = Saturday.
+        timezone:
+          type: string
+          description: IANA timezone, e.g. "Asia/Jerusalem".
+
+    Reminder:
+      allOf:
+        - $ref: "#/components/schemas/ReminderInput"
+        - type: object
+          required: [id]
+          properties:
+            id:
+              type: string
+
+    Error:
+      type: object
+      additionalProperties: false
+      required: [code, message]
+      properties:
+        code:
+          type: string
+          description: Short stable error code, e.g. "unauthorized" or "validation_failed".
+        message:
+          type: string
+          description: Human-readable explanation. Not localized — for developers, not end users.
+        details:
+          type: object
+          description: Optional structured context (e.g. which field failed validation).
+          additionalProperties: true
