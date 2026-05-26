@@ -4,10 +4,13 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
 
+import { CrisisAffordance } from "@/components/CrisisAffordance";
 import { fonts, tokens } from "@/lib/tokens";
 
 type Reflection = "stillHere" | "shaken" | "steady";
 
+// TODO(api): from the POST /sessions record — this sparkline is a fixed demo
+// curve. It should plot the actual pulseSamples from the session just completed.
 const SPARK = [72, 74, 79, 88, 96, 108, 112, 105, 94, 86, 78, 74];
 
 function Sparkline() {
@@ -91,7 +94,10 @@ export default function After() {
   return (
     <SafeAreaView className="flex-1 bg-bg">
       <View className="flex-1 px-8">
-        <View className="pt-12">
+        <View className="pt-2 flex-row">
+          <CrisisAffordance />
+        </View>
+        <View className="pt-10">
           <View style={{ width: 28, height: 1, backgroundColor: tokens.accent }} />
         </View>
 

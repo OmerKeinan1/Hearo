@@ -3,36 +3,29 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
 
+import { CrisisAffordance } from "@/components/CrisisAffordance";
+import { getScene, getSound, localize } from "@/lib/content";
 import { useSessionStore } from "@/lib/session-store";
 import { fonts, tokens } from "@/lib/tokens";
 
 export default function Home() {
   const router = useRouter();
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { scene, sounds } = useSessionStore();
 
-  const sceneShort = t(`scenes.${scene}.short`);
+  const sceneShort = localize(getScene(scene).short, i18n.language);
   const primarySound = sounds[0];
   const withLine = primarySound
-    ? t("home.withSound", { sound: t(`sounds.${primarySound}`) })
+    ? t("home.withSound", {
+        sound: localize(getSound(primarySound).label, i18n.language).toLowerCase(),
+      })
     : null;
 
   return (
     <SafeAreaView className="flex-1 bg-bg">
       <View className="flex-1 px-8">
         <View className="flex-row justify-between items-center pt-2">
-          <Pressable hitSlop={16} onPress={() => {}}>
-            <Text
-              style={{
-                color: tokens.text,
-                fontFamily: fonts.body,
-                fontSize: 18,
-                opacity: 0.7,
-              }}
-            >
-              i
-            </Text>
-          </Pressable>
+          <CrisisAffordance />
           <Pressable hitSlop={16} onPress={() => router.push("/setup")}>
             <Text
               style={{
@@ -51,6 +44,8 @@ export default function Home() {
           <View style={{ width: 28, height: 1, backgroundColor: tokens.accent }} />
         </View>
 
+        {/* TODO(api): GET /users/me — the name "Shai" is hard-coded in the
+            home.greeting i18n string. Replace with the user's displayName. */}
         <Text
           style={{
             color: tokens.text,

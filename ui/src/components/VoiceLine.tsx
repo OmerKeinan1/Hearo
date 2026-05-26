@@ -31,7 +31,7 @@ export function VoiceLine({ text }: Props) {
     <Animated.Text
       style={[
         {
-          color: tokens.text,
+          color: tokens.sceneText,
           fontFamily: fonts.display,
           fontSize: 26,
           lineHeight: 36,

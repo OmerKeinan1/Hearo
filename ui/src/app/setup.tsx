@@ -3,12 +3,13 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
 
-import { SceneKey } from "@/components/SceneBackground";
-import { SoundKey, useSessionStore } from "@/lib/session-store";
+import { CrisisAffordance } from "@/components/CrisisAffordance";
+import { getScenes, getSounds, localize } from "@/lib/content";
+import { useSessionStore } from "@/lib/session-store";
 import { fonts, tokens } from "@/lib/tokens";
 
-const SCENES: SceneKey[] = ["river", "park", "cafe", "road"];
-const SOUNDS: SoundKey[] = ["backfire", "motorcycle", "helicopter", "fireworks", "siren", "shouting"];
+const SCENES = getScenes();
+const SOUNDS = getSounds();
 
 function Radio({ selected }: { selected: boolean }) {
   return (
@@ -60,7 +61,7 @@ function Check({ selected }: { selected: boolean }) {
 
 export default function Setup() {
   const router = useRouter();
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { scene, sounds, setScene, toggleSound } = useSessionStore();
 
   return (
@@ -69,7 +70,8 @@ export default function Setup() {
         contentContainerStyle={{ paddingBottom: 24 }}
         showsVerticalScrollIndicator={false}
       >
-        <View className="px-8 pt-4">
+        <View className="px-8 pt-4 flex-row justify-between items-center">
+          <CrisisAffordance />
           <Pressable onPress={() => router.back()} hitSlop={12}>
             <Text
               style={{
@@ -103,11 +105,11 @@ export default function Setup() {
 
         <View className="px-8">
           {SCENES.map((s) => {
-            const selected = scene === s;
+            const selected = scene === s.key;
             return (
               <Pressable
-                key={s}
-                onPress={() => setScene(s)}
+                key={s.key}
+                onPress={() => setScene(s.key)}
                 hitSlop={6}
                 style={{ flexDirection: "row", alignItems: "center", paddingVertical: 10 }}
               >
@@ -120,7 +122,7 @@ export default function Setup() {
                     marginLeft: 14,
                   }}
                 >
-                  {t(`scenes.${s}.label`)}
+                  {localize(s.label, i18n.language)}
                 </Text>
               </Pressable>
             );
@@ -160,11 +162,11 @@ export default function Setup() {
 
         <View className="px-8">
           {SOUNDS.map((s) => {
-            const selected = sounds.includes(s);
+            const selected = sounds.includes(s.key);
             return (
               <Pressable
-                key={s}
-                onPress={() => toggleSound(s)}
+                key={s.key}
+                onPress={() => toggleSound(s.key)}
                 hitSlop={6}
                 style={{ flexDirection: "row", alignItems: "center", paddingVertical: 10 }}
               >
@@ -177,7 +179,7 @@ export default function Setup() {
                     marginLeft: 14,
                   }}
                 >
-                  {t(`sounds.${s}`)}
+                  {localize(s.label, i18n.language)}
                 </Text>
               </Pressable>
             );

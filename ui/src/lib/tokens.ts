@@ -1,12 +1,21 @@
 export const tokens = {
-  bg: "#241B16",
-  bgElev: "#2F231C",
-  bgDeep: "#1A1310",
-  text: "#EFE7DC",
-  textMute: "#9A8E7F",
-  accent: "#D89060",
-  accentSoft: "#A26A40",
-  critical: "#B23A3A",
+  // App surface — warm sand/paper light theme (used on every screen
+  // except the immersive Session screen).
+  bg: "#F2EBDD",
+  bgElev: "#E8DECB",
+  text: "#2E2823",
+  textMute: "#7A7060",
+  accent: "#C17A45",
+  accentSoft: "#9A6238",
+  sage: "#7E9468",
+  critical: "#BC6A4F",
+
+  // Scene — the Session screen stays an immersive dark moment: light text
+  // over scene imagery, with a warm-dark gradient overlay for legibility.
+  sceneText: "#F4EEE3",
+  sceneTextMute: "#CDBBA6",
+  sceneAccent: "#E0A56B",
+  sceneOverlayBottom: "#140F0C",
 } as const;
 
 export const fonts = {

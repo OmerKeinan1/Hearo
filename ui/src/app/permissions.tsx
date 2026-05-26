@@ -4,6 +4,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
 
+import { CrisisAffordance } from "@/components/CrisisAffordance";
 import { fonts, tokens } from "@/lib/tokens";
 
 type Status = "idle" | "granted";
@@ -83,7 +84,10 @@ export default function Permissions() {
   return (
     <SafeAreaView className="flex-1 bg-bg">
       <View className="flex-1 px-8">
-        <View className="pt-6">
+        <View className="pt-2 flex-row">
+          <CrisisAffordance />
+        </View>
+        <View className="pt-4">
           <View style={{ width: 28, height: 1, backgroundColor: tokens.accent }} />
         </View>
 

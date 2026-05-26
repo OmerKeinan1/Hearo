@@ -5,14 +5,17 @@ module.exports = {
   theme: {
     extend: {
       colors: {
-        bg: "#241B16",
-        "bg-elev": "#2F231C",
-        "bg-deep": "#1A1310",
-        text: "#EFE7DC",
-        "text-mute": "#9A8E7F",
-        accent: "#D89060",
-        "accent-soft": "#A26A40",
-        critical: "#B23A3A",
+        bg: "#F2EBDD",
+        "bg-elev": "#E8DECB",
+        text: "#2E2823",
+        "text-mute": "#7A7060",
+        accent: "#C17A45",
+        "accent-soft": "#9A6238",
+        sage: "#7E9468",
+        critical: "#BC6A4F",
+        "scene-text": "#F4EEE3",
+        "scene-text-mute": "#CDBBA6",
+        "scene-accent": "#E0A56B",
       },
       fontFamily: {
         display: ["FrankRuhlLibre_400Regular"],

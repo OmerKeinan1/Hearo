@@ -1,8 +1,8 @@
 import { create } from "zustand";
 
-import { SceneKey } from "@/components/SceneBackground";
+import { getDefaultPreferences, SceneKey, SoundKey } from "@/lib/content";
 
-export type SoundKey = "motorcycle" | "helicopter" | "fireworks" | "siren" | "backfire" | "shouting";
+export type { SceneKey, SoundKey };
 
 type SessionState = {
   scene: SceneKey;
@@ -11,9 +11,11 @@ type SessionState = {
   toggleSound: (sound: SoundKey) => void;
 };
 
+const defaults = getDefaultPreferences();
+
 export const useSessionStore = create<SessionState>((set) => ({
-  scene: "park",
-  sounds: ["motorcycle"],
+  scene: defaults.scene,
+  sounds: defaults.sounds,
   setScene: (scene) => set({ scene }),
   toggleSound: (sound) =>
     set((state) => ({

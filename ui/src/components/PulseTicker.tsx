@@ -13,7 +13,7 @@ export function PulseTicker({ value }: Props) {
     <View className="flex-row items-baseline">
       <Text
         style={{
-          color: tokens.textMute,
+          color: tokens.sceneTextMute,
           fontFamily: fonts.body,
           fontSize: 13,
           letterSpacing: 1.4,
@@ -24,7 +24,7 @@ export function PulseTicker({ value }: Props) {
       </Text>
       <Text
         style={{
-          color: tokens.accent,
+          color: tokens.sceneAccent,
           fontFamily: fonts.bodyMedium,
           fontSize: 28,
           marginLeft: 10,

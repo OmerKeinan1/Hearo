@@ -12,6 +12,7 @@ import {
 } from "@expo-google-fonts/frank-ruhl-libre";
 import { Heebo_400Regular, Heebo_500Medium } from "@expo-google-fonts/heebo";
 
+import { CrisisSheet } from "@/components/CrisisSheet";
 import { isRTL } from "@/lib/i18n";
 
 SplashScreen.preventAutoHideAsync().catch(() => {});
@@ -43,14 +44,15 @@ export default function RootLayout() {
   }
 
   return (
-    <GestureHandlerRootView style={{ flex: 1, backgroundColor: "#241B16" }}>
+    <GestureHandlerRootView style={{ flex: 1, backgroundColor: "#F2EBDD" }}>
       <Stack
         screenOptions={{
           headerShown: false,
-          contentStyle: { backgroundColor: "#241B16" },
+          contentStyle: { backgroundColor: "#F2EBDD" },
           animation: "fade",
         }}
       />
+      <CrisisSheet />
     </GestureHandlerRootView>
   );
 }

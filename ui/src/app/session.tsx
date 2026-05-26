@@ -5,15 +5,19 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
 
 import { BreathingCircle } from "@/components/BreathingCircle";
+import { CrisisAffordance } from "@/components/CrisisAffordance";
 import { IntensitySlider } from "@/components/IntensitySlider";
 import { PulseTicker } from "@/components/PulseTicker";
-import { SceneBackground, SceneKey } from "@/components/SceneBackground";
+import { SceneBackground } from "@/components/SceneBackground";
 import { VoiceLine } from "@/components/VoiceLine";
+import { getScene, getVoiceScript, localize, Phase, SceneKey } from "@/lib/content";
+import { useCrisisStore } from "@/lib/crisis-store";
 import { fonts, tokens } from "@/lib/tokens";
 import { PulsePhase, usePulse } from "@/lib/pulse";
 
-type Phase = "opening" | "during" | "calming";
-
+// TODO(api): session program config — these phase timings are a fixed demo
+// script. A real version sources the program (durations, trigger placement)
+// per scene/session from the backend.
 const SCRIPT: { at: number; phase: Phase; pulsePhase: PulsePhase; flash?: number }[] = [
   { at: 0, phase: "opening", pulsePhase: "baseline" },
   { at: 15000, phase: "during", pulsePhase: "rising", flash: 0.9 },
@@ -32,7 +36,7 @@ const VALID_SCENES: SceneKey[] = ["river", "park", "cafe", "road"];
 
 export default function Session() {
   const router = useRouter();
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { scene: sceneParam } = useLocalSearchParams<{ scene?: string }>();
   const scene: SceneKey = VALID_SCENES.includes(sceneParam as SceneKey)
     ? (sceneParam as SceneKey)
@@ -44,39 +48,49 @@ export default function Session() {
   const [elapsed, setElapsed] = useState(0);
   const [ceiling, setCeiling] = useState(0.65);
   const startedAt = useRef(Date.now());
+  const scriptIndex = useRef(0);
+  const pausedSince = useRef<number | null>(null);
 
-  const pulse = usePulse({ active: true, phase: pulsePhase });
+  const isCrisisOpen = useCrisisStore((s) => s.isOpen);
+  const pausedRef = useRef(false);
+
+  const pulse = usePulse({ active: !isCrisisOpen, phase: pulsePhase });
   const slow = pulsePhase === "peak" || pulsePhase === "settling";
 
   useEffect(() => {
-    const timers = SCRIPT.map((step) =>
-      setTimeout(() => {
-        setPhase(step.phase);
-        setPulsePhase(step.pulsePhase);
-        if (step.flash) setFlash(step.flash);
-      }, step.at),
-    );
-    return () => timers.forEach(clearTimeout);
-  }, []);
+    pausedRef.current = isCrisisOpen;
+    if (isCrisisOpen) {
+      if (pausedSince.current === null) pausedSince.current = Date.now();
+    } else if (pausedSince.current !== null) {
+      startedAt.current += Date.now() - pausedSince.current;
+      pausedSince.current = null;
+    }
+  }, [isCrisisOpen]);
 
   useEffect(() => {
     const id = setInterval(() => {
-      setElapsed(Date.now() - startedAt.current);
+      if (pausedRef.current) return;
+      const now = Date.now() - startedAt.current;
+      setElapsed(now);
+      const next = SCRIPT[scriptIndex.current + 1];
+      if (next && next.at <= now) {
+        scriptIndex.current += 1;
+        setPhase(next.phase);
+        setPulsePhase(next.pulsePhase);
+        if (next.flash) setFlash(next.flash);
+      }
     }, 250);
     return () => clearInterval(id);
   }, []);
 
-  const voiceText = useMemo(() => {
-    if (phase === "opening") return t("session.voice.opening");
-    if (phase === "during") return t("session.voice.during");
-    return t("session.voice.calming");
-  }, [phase, t]);
+  const voiceText = useMemo(
+    () => getVoiceScript(scene, phase, i18n.language),
+    [scene, phase, i18n.language],
+  );
 
   const autoFloor = slow ? Math.min(ceiling, 0.35) : ceiling;
   const effective = autoFloor;
-  const sceneLabel = t(`scenes.${scene}.label` as const, {
-    defaultValue: t("session.scene"),
-  });
+  const sceneLabel = localize(getScene(scene).label, i18n.language);
 
   return (
     <View className="flex-1 bg-bg">
@@ -84,18 +98,7 @@ export default function Session() {
       <SafeAreaView className="flex-1">
         <View className="flex-1 px-7">
           <View className="flex-row justify-between items-center pt-2">
-            <Pressable hitSlop={16} onPress={() => {}}>
-              <Text
-                style={{
-                  color: tokens.text,
-                  fontFamily: fonts.body,
-                  fontSize: 18,
-                  opacity: 0.7,
-                }}
-              >
-                i
-              </Text>
-            </Pressable>
+            <CrisisAffordance tone="on-scene" />
             <Pressable hitSlop={16} onPress={() => router.back()}>
               <Text
                 style={{
@@ -113,7 +116,7 @@ export default function Session() {
           <View className="pt-8">
             <Text
               style={{
-                color: tokens.text,
+                color: tokens.sceneText,
                 fontFamily: fonts.body,
                 fontSize: 13,
                 letterSpacing: 1.6,
@@ -130,7 +133,7 @@ export default function Session() {
           </View>
 
           <View className="flex-1 justify-center">
-            <BreathingCircle flash={flash} slow={slow} />
+            <BreathingCircle flash={flash} slow={slow} paused={isCrisisOpen} />
           </View>
 
           <View className="pb-2">
@@ -141,14 +144,14 @@ export default function Session() {
             <View
               style={{
                 height: 1,
-                backgroundColor: tokens.text,
+                backgroundColor: tokens.sceneText,
                 opacity: 0.25,
                 width: "70%",
               }}
             />
             <Text
               style={{
-                color: tokens.text,
+                color: tokens.sceneText,
                 fontFamily: fonts.body,
                 fontSize: 13,
                 marginTop: 8,

@@ -3,6 +3,8 @@ import { Pressable, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useTranslation } from "react-i18next";
 
+import { CrisisAffordance } from "@/components/CrisisAffordance";
+
 export default function Welcome() {
   const router = useRouter();
   const { t } = useTranslation();
@@ -10,7 +12,10 @@ export default function Welcome() {
   return (
     <SafeAreaView className="flex-1 bg-bg">
       <View className="flex-1 px-8 justify-between">
-        <View className="pt-24">
+        <View className="pt-6 flex-row">
+          <CrisisAffordance />
+        </View>
+        <View className="absolute left-8 top-24">
           <View className="w-8 h-px bg-accent" />
         </View>
 

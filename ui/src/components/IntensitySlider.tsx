@@ -54,7 +54,7 @@ export function IntensitySlider({ value, effective, onChange }: Props) {
       <View className="flex-row items-center" style={{ width: TRACK_WIDTH + 140 }}>
         <Text
           style={{
-            color: tokens.textMute,
+            color: tokens.sceneTextMute,
             fontFamily: fonts.body,
             fontSize: 13,
             width: 60,
@@ -77,7 +77,7 @@ export function IntensitySlider({ value, effective, onChange }: Props) {
               style={{
                 height: 1,
                 width: TRACK_WIDTH,
-                backgroundColor: tokens.textMute,
+                backgroundColor: tokens.sceneTextMute,
                 opacity: 0.5,
               }}
             />
@@ -90,7 +90,7 @@ export function IntensitySlider({ value, effective, onChange }: Props) {
                   height: THUMB_SIZE,
                   borderRadius: THUMB_SIZE / 2,
                   borderWidth: 1,
-                  borderColor: tokens.accent,
+                  borderColor: tokens.sceneAccent,
                   opacity: 0.45,
                 }}
               />
@@ -102,7 +102,7 @@ export function IntensitySlider({ value, effective, onChange }: Props) {
                   width: THUMB_SIZE,
                   height: THUMB_SIZE,
                   borderRadius: THUMB_SIZE / 2,
-                  backgroundColor: tokens.accent,
+                  backgroundColor: tokens.sceneAccent,
                 },
                 thumbStyle,
               ]}
@@ -112,7 +112,7 @@ export function IntensitySlider({ value, effective, onChange }: Props) {
 
         <Text
           style={{
-            color: tokens.textMute,
+            color: tokens.sceneTextMute,
             fontFamily: fonts.body,
             fontSize: 13,
             width: 60,
