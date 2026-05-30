@@ -19,9 +19,9 @@ import { useCrisisStore } from "@/lib/crisis-store";
 import { fonts, tokens } from "@/lib/tokens";
 import { PulsePhase, usePulse } from "@/lib/pulse";
 
-// TODO(api): session program config — these phase timings are a fixed demo
-// script. A real version sources the program (durations, trigger placement)
-// per scene/session from the backend.
+// TODO(supabase): `session_programs` table — these phase timings are a fixed
+// demo script. A real version sources the program (durations, trigger
+// placement) per scene from Supabase.
 const SCRIPT: { at: number; phase: Phase; pulsePhase: PulsePhase; flash?: number }[] = [
   { at: 0, phase: "opening", pulsePhase: "baseline" },
   { at: 15000, phase: "during", pulsePhase: "rising", flash: 0.9 },

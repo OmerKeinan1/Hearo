@@ -7,10 +7,11 @@ type Options = {
   phase: PulsePhase;
 };
 
-// TODO(api): /preferences — personalized pulse thresholds. These are mock
-// target values for the demo. Real pulse comes from HealthKit; the
-// auto-soften threshold should be per-user (baseline HR, age, tolerance
-// window all vary — see RATIONALE.md "threshold calibration").
+// TODO(supabase): `user_preferences.pulse_thresholds` (jsonb) — personalized
+// thresholds. These are mock target values for the demo. Real pulse comes
+// from HealthKit (on-device); the auto-soften threshold should be per-user
+// (baseline HR, age, tolerance window all vary — see RATIONALE.md
+// "threshold calibration").
 const TARGETS: Record<PulsePhase, number> = {
   baseline: 74,
   rising: 96,

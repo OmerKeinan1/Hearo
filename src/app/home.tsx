@@ -36,8 +36,9 @@ export default function Home() {
           <View style={{ width: 28, height: 1, backgroundColor: tokens.accent }} />
         </View>
 
-        {/* TODO(api): GET /users/me — the name "Shai" is hard-coded in the
-            home.greeting i18n string. Replace with the user's displayName. */}
+        {/* TODO(supabase): the name "Shai" is hard-coded in the home.greeting
+            i18n string. Replace with the user's display_name from the
+            `profiles` row keyed by auth.uid(). */}
         <Text
           style={{
             color: tokens.text,

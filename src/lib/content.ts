@@ -1,9 +1,9 @@
 // Content provisioning seam.
 //
 // Today this returns bundled local data. Every getter is a swap point for a
-// backend call — see the TODO(api) markers, each naming the endpoint from
-// server/openapi.yaml that will eventually serve it. When the backend lands,
-// only the bodies here change; call sites stay the same (they gain `await`).
+// Supabase query — see the TODO(supabase) markers, each naming the table /
+// query that will eventually serve it. When the schema lands, only the
+// bodies here change; call sites stay the same (they gain `await`).
 
 import { ImageSourcePropType } from "react-native";
 
@@ -48,7 +48,7 @@ export type Scene = {
 export type Sound = {
   key: SoundKey;
   label: LocalizedText;
-  // TODO(api): GET /sounds — each variation will become an audioUrl + duration.
+  // TODO(supabase): `sound_variations` table — each row a (sound_id, audio_url, duration_ms).
   // Variations exist so the user can't anticipate the exact clip — a small but
   // therapeutically meaningful unpredictability.
   audioVariations: AudioModule[];
@@ -63,7 +63,7 @@ export function localize(text: LocalizedText, lang: string): string {
   return lang === "he" ? text.he : text.en;
 }
 
-// TODO(api): GET /scenes — replace SCENES with the backend response.
+// TODO(supabase): `scenes` table (+ join `scene_voice_lines` keyed by scene + phase + lang).
 const SCENES: Record<SceneKey, Scene> = {
   beach: {
     key: "beach",
@@ -159,8 +159,8 @@ const SCENES: Record<SceneKey, Scene> = {
   },
 };
 
-// TODO(api): GET /sounds — replace SOUNDS with the backend response
-// (each variation will become an audioUrl + duration).
+// TODO(supabase): `sounds` table — key, labels by lang.
+// Variations live in `sound_variations` (sound_id → audio_url, duration_ms).
 const SOUNDS: Record<SoundKey, Sound> = {
   motorcycle: {
     key: "motorcycle",
@@ -231,7 +231,7 @@ export const SOUND_ORDER: SoundKey[] = [
   "fireworks",
 ];
 
-// TODO(api): GET /scenes
+// TODO(supabase): `supabase.from('scenes').select('*, scene_voice_lines(*)')`
 export function getScenes(): Scene[] {
   return SCENE_ORDER.map((k) => SCENES[k]);
 }
@@ -240,12 +240,12 @@ export function getScene(key: SceneKey): Scene {
   return SCENES[key];
 }
 
-// TODO(api): GET /voice-lines?scene=&phase=&lang=
+// TODO(supabase): `supabase.from('scene_voice_lines').select().eq('scene', scene).eq('phase', phase).eq('lang', lang).single()`
 export function getVoiceScript(scene: SceneKey, phase: Phase, lang: string): string {
   return localize(SCENES[scene].voice[phase], lang);
 }
 
-// TODO(api): GET /sounds
+// TODO(supabase): `supabase.from('sounds').select('*, sound_variations(*)')`
 export function getSounds(): Sound[] {
   return SOUND_ORDER.map((k) => SOUNDS[k]);
 }
@@ -254,7 +254,8 @@ export function getSound(key: SoundKey): Sound {
   return SOUNDS[key];
 }
 
-// TODO(api): GET /preferences — the user's persisted scene + consented sounds.
+// TODO(supabase): `user_preferences` row keyed by `auth.uid()` — scene, consented sounds,
+// learned intensity ceilings per sound.
 export function getDefaultPreferences(): Preferences {
   return { scene: "park", sounds: ["motorcycle"] };
 }
