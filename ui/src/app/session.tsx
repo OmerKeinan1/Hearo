@@ -36,7 +36,7 @@ function formatElapsed(ms: number) {
   return `${minutes}:${seconds.toString().padStart(2, "0")}`;
 }
 
-const VALID_SCENES: SceneKey[] = ["river", "park", "cafe", "road"];
+const VALID_SCENES: SceneKey[] = ["beach", "park", "cafe", "road"];
 
 export default function Session() {
   const router = useRouter();

@@ -7,7 +7,7 @@
 
 import { ImageSourcePropType } from "react-native";
 
-export type SceneKey = "river" | "park" | "cafe" | "road";
+export type SceneKey = "beach" | "park" | "cafe" | "road";
 export type SoundKey =
   | "motorcycle"
   | "helicopter"
@@ -65,26 +65,26 @@ export function localize(text: LocalizedText, lang: string): string {
 
 // TODO(api): GET /scenes — replace SCENES with the backend response.
 const SCENES: Record<SceneKey, Scene> = {
-  river: {
-    key: "river",
-    label: { en: "River walk, evening", he: "טיול לאורך הנהר, ערב" },
-    short: { en: "River path", he: "שביל הנהר" },
+  beach: {
+    key: "beach",
+    label: { en: "Beach walk, evening", he: "טיול בחוף, ערב" },
+    short: { en: "Beach", he: "חוף" },
     media: {
-      still: "https://images.unsplash.com/photo-1502209524164-acea936639a2?w=900&q=80",
+      still: require("@/assets/scenes/beach.png"),
     },
     tint: { top: "#3A4F4A" },
     voice: {
       opening: {
-        en: "You're walking\nalong the river.\nThe air is cool.",
-        he: "אתה הולך\nלאורך הנהר.\nהאוויר קריר.",
+        en: "You're walking\nalong the beach.\nThe waves are quiet.",
+        he: "אתה הולך\nלאורך החוף.\nהגלים שקטים.",
       },
       during: {
         en: "The water keeps moving.\nA sound cuts across it.\nYou keep walking.",
         he: "המים ממשיכים לזרום.\nצליל חוצה אותם.\nאתה ממשיך ללכת.",
       },
       calming: {
-        en: "That sound is part of the day.\nYou're still by the river.\nYou're still safe.",
-        he: "הצליל הזה הוא חלק מהיום.\nאתה עדיין ליד הנהר.\nאתה עדיין בטוח.",
+        en: "That sound is part of the day.\nYou're still by the water.\nYou're still safe.",
+        he: "הצליל הזה הוא חלק מהיום.\nאתה עדיין ליד המים.\nאתה עדיין בטוח.",
       },
     },
   },
@@ -93,7 +93,7 @@ const SCENES: Record<SceneKey, Scene> = {
     label: { en: "Park, evening", he: "פארק, ערב" },
     short: { en: "Park", he: "פארק" },
     media: {
-      still: "https://images.unsplash.com/photo-1441260038675-7329ab4cc264?w=900&q=80",
+      still: require("@/assets/scenes/park.png"),
     },
     tint: { top: "#4A4A2C" },
     voice: {
@@ -116,7 +116,7 @@ const SCENES: Record<SceneKey, Scene> = {
     label: { en: "Cafe, morning", he: "בית קפה, בוקר" },
     short: { en: "Cafe", he: "בית קפה" },
     media: {
-      still: "https://images.unsplash.com/photo-1554118811-1e0d58224f24?w=900&q=80",
+      still: require("@/assets/scenes/cafe.jpg"),
     },
     tint: { top: "#5A3D26" },
     voice: {
@@ -139,7 +139,7 @@ const SCENES: Record<SceneKey, Scene> = {
     label: { en: "Quiet road", he: "כביש שקט" },
     short: { en: "Quiet road", he: "כביש שקט" },
     media: {
-      still: "https://images.unsplash.com/photo-1517649763962-0c623066013b?w=900&q=80",
+      still: require("@/assets/scenes/road.jpg"),
     },
     tint: { top: "#3D332B" },
     voice: {
@@ -219,7 +219,7 @@ const SOUNDS: Record<SoundKey, Sound> = {
   },
 };
 
-export const SCENE_ORDER: SceneKey[] = ["river", "park", "cafe", "road"];
+export const SCENE_ORDER: SceneKey[] = ["beach", "park", "cafe", "road"];
 // Ordered roughly by how commonly users encounter each trigger in daily urban
 // life — most encountered first, so the picker reads as a familiar list.
 export const SOUND_ORDER: SoundKey[] = [
