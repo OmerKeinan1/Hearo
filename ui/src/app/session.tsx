@@ -6,10 +6,14 @@ import { useTranslation } from "react-i18next";
 
 import { BreathingCircle } from "@/components/BreathingCircle";
 import { CrisisAffordance } from "@/components/CrisisAffordance";
+import { Icon } from "@/components/Icon";
 import { IntensitySlider } from "@/components/IntensitySlider";
 import { PulseTicker } from "@/components/PulseTicker";
 import { SceneBackground } from "@/components/SceneBackground";
 import { VoiceLine } from "@/components/VoiceLine";
+import { useAudioPlayer } from "expo-audio";
+import { useSessionStore } from "@/lib/session-store";
+import { pickRandomTrigger } from "@/lib/audio";
 import { getScene, getVoiceScript, localize, Phase, SceneKey } from "@/lib/content";
 import { useCrisisStore } from "@/lib/crisis-store";
 import { fonts, tokens } from "@/lib/tokens";
@@ -57,6 +61,13 @@ export default function Session() {
   const pulse = usePulse({ active: !isCrisisOpen, phase: pulsePhase });
   const slow = pulsePhase === "peak" || pulsePhase === "settling";
 
+  // Trigger audio: pick one random variation of the user's first consented
+  // sound on mount and stick with it for this session. Empty consent list →
+  // null source = silent rehearsal walk.
+  const consentedSounds = useSessionStore((s) => s.sounds);
+  const [triggerSource] = useState(() => pickRandomTrigger(consentedSounds[0]));
+  const audioPlayer = useAudioPlayer(triggerSource);
+
   useEffect(() => {
     pausedRef.current = isCrisisOpen;
     if (isCrisisOpen) {
@@ -92,6 +103,32 @@ export default function Session() {
   const effective = autoFloor;
   const sceneLabel = localize(getScene(scene).label, i18n.language);
 
+  // Start the trigger clip when entering the during phase.
+  useEffect(() => {
+    if (!triggerSource) return;
+    if (phase === "during" && !isCrisisOpen) {
+      audioPlayer.seekTo(0);
+      audioPlayer.play();
+    }
+  }, [phase, isCrisisOpen, triggerSource, audioPlayer]);
+
+  // Volume tracks the effective ceiling (manual ceiling, possibly
+  // further attenuated by the automatic pulse-driven floor).
+  useEffect(() => {
+    if (!triggerSource) return;
+    audioPlayer.volume = effective;
+  }, [effective, triggerSource, audioPlayer]);
+
+  // Crisis-sheet pause: silence the clip and resume on dismiss.
+  useEffect(() => {
+    if (!triggerSource) return;
+    if (isCrisisOpen) {
+      audioPlayer.pause();
+    } else if (phase === "during") {
+      audioPlayer.play();
+    }
+  }, [isCrisisOpen, phase, triggerSource, audioPlayer]);
+
   return (
     <View className="flex-1 bg-bg">
       <SceneBackground scene={scene} intensity={slow ? 0.86 : 0.78} />
@@ -100,16 +137,7 @@ export default function Session() {
           <View className="flex-row justify-between items-center pt-2">
             <CrisisAffordance tone="on-scene" />
             <Pressable hitSlop={16} onPress={() => router.back()}>
-              <Text
-                style={{
-                  color: tokens.text,
-                  fontFamily: fonts.body,
-                  fontSize: 22,
-                  opacity: 0.7,
-                }}
-              >
-                ×
-              </Text>
+              <Icon name="close" size={20} color={tokens.sceneText} />
             </Pressable>
           </View>
 

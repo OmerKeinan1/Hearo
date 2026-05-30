@@ -7,6 +7,7 @@ HearO is a mobile app for veterans living with combat-related PTSD. It uses grad
 > Companion docs:
 > - [RATIONALE.md](./RATIONALE.md) — clinical and design reasoning, with citations.
 > - [FRONTEND.md](./FRONTEND.md) — visual design system + screen specs.
+> - [ui/CONVENTIONS.md](./ui/CONVENTIONS.md) — frontend code conventions (stack, folder structure, hooks, naming).
 > - [server/README.md](./server/README.md) — backend API contract (OpenAPI 3.1 at [server/openapi.yaml](./server/openapi.yaml)).
 > - [openspec/README.md](./openspec/README.md) — capability requirements in [openspec.dev](https://openspec.dev) form.
 
@@ -127,6 +128,10 @@ Until real assets land, screens use silence stubs so the app runs end-to-end.
 - **Wordmark final form.** Direction is *hear + O* with O = breathing circle. Final graphic file needs to be locked before any pixel-level brand work.
 - **Watch companion app.** Out of frontend scope for this hackathon. Watch acts as a sensor only, no UI on the wrist.
 - **AI voice generation pipeline.** If we want voice lines generated rather than human-recorded, that's a backend decision (ElevenLabs, Hume, etc.) — current spec assumes pre-recorded human or pre-generated clips.
+
+## Credits
+
+Icons by [Streamline](https://www.streamlinehq.com/) — `arrow-right` and `navigation-menu` from the [Ultimate free set](https://icon-sets.iconify.design/streamline-ultimate/), used under the [CC BY 4.0 license](https://creativecommons.org/licenses/by/4.0/). The `arrow-left` icon is the right-arrow flipped horizontally; the `close` (X) icon is a small custom SVG drawn in Streamline's stroke style (1.5px, rounded caps) because the free set has no thin X.
 
 ## What's intentionally out of scope for the hackathon
 

@@ -4,6 +4,7 @@ import { useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
 
 import { CrisisAffordance } from "@/components/CrisisAffordance";
+import { Icon } from "@/components/Icon";
 import { getScenes, getSounds, localize } from "@/lib/content";
 import { useSessionStore } from "@/lib/session-store";
 import { fonts, tokens } from "@/lib/tokens";
@@ -73,15 +74,7 @@ export default function Setup() {
         <View className="px-8 pt-4 flex-row justify-between items-center">
           <CrisisAffordance />
           <Pressable onPress={() => router.back()} hitSlop={12}>
-            <Text
-              style={{
-                color: tokens.text,
-                fontFamily: fonts.body,
-                fontSize: 22,
-              }}
-            >
-              ←
-            </Text>
+            <Icon name="arrow-left" size={22} color={tokens.text} />
           </Pressable>
         </View>
 
@@ -192,15 +185,18 @@ export default function Setup() {
             hitSlop={8}
             style={{ opacity: sounds.length === 0 ? 0.4 : 1 }}
           >
-            <Text
-              style={{
-                color: tokens.accent,
-                fontFamily: fonts.body,
-                fontSize: 22,
-              }}
-            >
-              {t("setup.ready")}  →
-            </Text>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
+              <Text
+                style={{
+                  color: tokens.accent,
+                  fontFamily: fonts.body,
+                  fontSize: 22,
+                }}
+              >
+                {t("setup.ready")}
+              </Text>
+              <Icon name="arrow-right" size={20} color={tokens.accent} />
+            </View>
           </Pressable>
         </View>
       </ScrollView>

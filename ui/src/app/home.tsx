@@ -4,6 +4,7 @@ import { useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
 
 import { CrisisAffordance } from "@/components/CrisisAffordance";
+import { Icon } from "@/components/Icon";
 import { getScene, getSound, localize } from "@/lib/content";
 import { useSessionStore } from "@/lib/session-store";
 import { fonts, tokens } from "@/lib/tokens";
@@ -27,16 +28,7 @@ export default function Home() {
         <View className="flex-row justify-between items-center pt-2">
           <CrisisAffordance />
           <Pressable hitSlop={16} onPress={() => router.push("/setup")}>
-            <Text
-              style={{
-                color: tokens.text,
-                fontFamily: fonts.body,
-                fontSize: 18,
-                opacity: 0.7,
-              }}
-            >
-              ≡
-            </Text>
+            <Icon name="menu" size={22} color={tokens.text} />
           </Pressable>
         </View>
 

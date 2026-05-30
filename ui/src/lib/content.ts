@@ -13,8 +13,15 @@ export type SoundKey =
   | "helicopter"
   | "fireworks"
   | "siren"
-  | "backfire"
-  | "shouting";
+  | "car-horn"
+  | "door-slam";
+// Note: dog, baby-crying, restaurant audio files remain on disk under
+// ui/assets/sounds/triggers/ — these are off-persona for combat veterans
+// (postpartum / K9 / social-anxiety trauma) but kept for a future expansion
+// to other trauma profiles.
+
+/** `require()` of a bundled mp3 returns a number from RN's asset registry. */
+export type AudioModule = number;
 export type Phase = "opening" | "during" | "calming";
 export type Lang = "en" | "he";
 
@@ -41,6 +48,10 @@ export type Scene = {
 export type Sound = {
   key: SoundKey;
   label: LocalizedText;
+  // TODO(api): GET /sounds — each variation will become an audioUrl + duration.
+  // Variations exist so the user can't anticipate the exact clip — a small but
+  // therapeutically meaningful unpredictability.
+  audioVariations: AudioModule[];
 };
 
 export type Preferences = {
@@ -82,7 +93,7 @@ const SCENES: Record<SceneKey, Scene> = {
     label: { en: "Park, evening", he: "פארק, ערב" },
     short: { en: "Park", he: "פארק" },
     media: {
-      still: "https://images.unsplash.com/photo-1444930694458-01babe71870e?w=900&q=80",
+      still: "https://images.unsplash.com/photo-1441260038675-7329ab4cc264?w=900&q=80",
     },
     tint: { top: "#4A4A2C" },
     voice: {
@@ -149,24 +160,75 @@ const SCENES: Record<SceneKey, Scene> = {
 };
 
 // TODO(api): GET /sounds — replace SOUNDS with the backend response
-// (each will also carry audioUrl + durationMs).
+// (each variation will become an audioUrl + duration).
 const SOUNDS: Record<SoundKey, Sound> = {
-  backfire: { key: "backfire", label: { en: "Car backfire", he: "פיצוץ מנוע" } },
-  motorcycle: { key: "motorcycle", label: { en: "Motorcycle", he: "אופנוע" } },
-  helicopter: { key: "helicopter", label: { en: "Helicopter", he: "מסוק" } },
-  fireworks: { key: "fireworks", label: { en: "Fireworks", he: "זיקוקים" } },
-  siren: { key: "siren", label: { en: "Siren", he: "סירנה" } },
-  shouting: { key: "shouting", label: { en: "Shouting", he: "צעקות" } },
+  motorcycle: {
+    key: "motorcycle",
+    label: { en: "Motorcycle", he: "אופנוע" },
+    audioVariations: [
+      require("@/assets/sounds/triggers/motorcycle/1.mp3"),
+      require("@/assets/sounds/triggers/motorcycle/2.mp3"),
+      require("@/assets/sounds/triggers/motorcycle/3.mp3"),
+      require("@/assets/sounds/triggers/motorcycle/4.mp3"),
+    ],
+  },
+  helicopter: {
+    key: "helicopter",
+    label: { en: "Helicopter", he: "מסוק" },
+    audioVariations: [
+      require("@/assets/sounds/triggers/helicopter/1.mp3"),
+      require("@/assets/sounds/triggers/helicopter/2.mp3"),
+    ],
+  },
+  fireworks: {
+    key: "fireworks",
+    label: { en: "Fireworks", he: "זיקוקים" },
+    audioVariations: [
+      require("@/assets/sounds/triggers/fireworks/1.mp3"),
+      require("@/assets/sounds/triggers/fireworks/2.mp3"),
+      require("@/assets/sounds/triggers/fireworks/3.mp3"),
+      require("@/assets/sounds/triggers/fireworks/4.mp3"),
+    ],
+  },
+  siren: {
+    key: "siren",
+    label: { en: "Siren", he: "סירנה" },
+    audioVariations: [
+      require("@/assets/sounds/triggers/siren/1.mp3"),
+      require("@/assets/sounds/triggers/siren/2.mp3"),
+      require("@/assets/sounds/triggers/siren/3.mp3"),
+    ],
+  },
+  "car-horn": {
+    key: "car-horn",
+    label: { en: "Car horn", he: "צפירת מכונית" },
+    audioVariations: [
+      require("@/assets/sounds/triggers/car-horn/1.mp3"),
+      require("@/assets/sounds/triggers/car-horn/2.mp3"),
+    ],
+  },
+  "door-slam": {
+    key: "door-slam",
+    label: { en: "Door slam", he: "דלת נטרקת" },
+    audioVariations: [
+      require("@/assets/sounds/triggers/door-slam/1.mp3"),
+      require("@/assets/sounds/triggers/door-slam/2.mp3"),
+      require("@/assets/sounds/triggers/door-slam/3.mp3"),
+      require("@/assets/sounds/triggers/door-slam/4.mp3"),
+    ],
+  },
 };
 
 export const SCENE_ORDER: SceneKey[] = ["river", "park", "cafe", "road"];
+// Ordered roughly by how commonly users encounter each trigger in daily urban
+// life — most encountered first, so the picker reads as a familiar list.
 export const SOUND_ORDER: SoundKey[] = [
-  "backfire",
   "motorcycle",
-  "helicopter",
-  "fireworks",
+  "car-horn",
   "siren",
-  "shouting",
+  "helicopter",
+  "door-slam",
+  "fireworks",
 ];
 
 // TODO(api): GET /scenes

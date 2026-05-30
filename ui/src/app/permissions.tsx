@@ -5,6 +5,7 @@ import { useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
 
 import { CrisisAffordance } from "@/components/CrisisAffordance";
+import { Icon } from "@/components/Icon";
 import { fonts, tokens } from "@/lib/tokens";
 
 type Status = "idle" | "granted";
@@ -138,15 +139,18 @@ export default function Permissions() {
           hitSlop={8}
           style={{ paddingBottom: 16, opacity: canContinue ? 1 : 0.4 }}
         >
-          <Text
-            style={{
-              color: tokens.accent,
-              fontFamily: fonts.body,
-              fontSize: 22,
-            }}
-          >
-            {t("permissions.continue")}  →
-          </Text>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
+            <Text
+              style={{
+                color: tokens.accent,
+                fontFamily: fonts.body,
+                fontSize: 22,
+              }}
+            >
+              {t("permissions.continue")}
+            </Text>
+            <Icon name="arrow-right" size={20} color={tokens.accent} />
+          </View>
         </Pressable>
       </View>
     </SafeAreaView>

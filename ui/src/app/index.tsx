@@ -4,6 +4,8 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useTranslation } from "react-i18next";
 
 import { CrisisAffordance } from "@/components/CrisisAffordance";
+import { Icon } from "@/components/Icon";
+import { tokens } from "@/lib/tokens";
 
 export default function Welcome() {
   const router = useRouter();
@@ -30,12 +32,15 @@ export default function Welcome() {
 
         <View className="pb-12">
           <Pressable onPress={() => router.push("/permissions")}>
-            <Text
-              className="text-accent text-2xl"
-              style={{ fontFamily: "Heebo_400Regular" }}
-            >
-              {t("welcome.begin")}  →
-            </Text>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
+              <Text
+                className="text-accent text-2xl"
+                style={{ fontFamily: "Heebo_400Regular" }}
+              >
+                {t("welcome.begin")}
+              </Text>
+              <Icon name="arrow-right" size={20} color={tokens.accent} />
+            </View>
           </Pressable>
         </View>
       </View>
