@@ -8,21 +8,21 @@ The app SHALL source all scenes, sounds, voice scripts, and default preferences 
 - **THEN** it obtains them from the content adapter
 - **AND** it does not import scene data from `SceneBackground.tsx` constants or generic `i18n` voice keys
 
-### Requirement: Adapter mirrors the API shape
-The adapter's return types SHALL match the response schemas defined in `server/openapi.yaml`, so swapping local data for backend calls does not change call sites.
+### Requirement: Adapter shape is stable across local and remote
+The adapter's return types SHALL match the shape served by Supabase queries, so swapping local data for `supabase.from(...).select(...)` calls does not change call sites beyond gaining `await`.
 
 #### Scenario: Local and remote parity
 - **WHEN** the adapter returns a scene locally
-- **THEN** the object shape matches the `Scene` schema served by `GET /scenes`
-- **AND** replacing the adapter body with a `fetch` requires no change to consuming screens beyond awaiting the result
+- **THEN** the object shape matches what `supabase.from('scenes').select('*, scene_voice_lines(*)')` will return once the schema lands
+- **AND** replacing the adapter body with the Supabase query requires no change to consuming screens beyond awaiting the result
 
 ### Requirement: Hard-coded sites are marked and traceable
-Every remaining hard-coded data site that should eventually be API-served SHALL carry a `TODO(api)` comment naming its target endpoint.
+Every remaining hard-coded data site that should eventually be served by Supabase SHALL carry a `TODO(supabase)` comment naming the target table or query.
 
 #### Scenario: Markers are greppable
-- **WHEN** a developer runs `grep -rn "TODO(api)" ui/src`
+- **WHEN** a developer runs `grep -rn "TODO(supabase)" src`
 - **THEN** each hard-coded content site (user name, session timeline, pulse thresholds, after-screen sparkline) appears
-- **AND** each marker names the endpoint from `openapi.yaml` that will replace it
+- **AND** each marker names the Supabase table or query that will replace it
 
 #### Scenario: Intentional constants are exempt
 - **WHEN** a value is region configuration rather than enriched content (e.g. the ERAN crisis number)

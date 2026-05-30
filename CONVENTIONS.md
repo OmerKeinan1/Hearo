@@ -1,6 +1,8 @@
 # HearO frontend conventions
 
-Conventions for the React Native (Expo) UI. Sister docs: [`../FRONTEND.md`](../FRONTEND.md) for visual design and screen specs, [`../server/openapi.yaml`](../server/openapi.yaml) for the API contract.
+Conventions for the React Native (Expo) UI. Sister docs: [`FRONTEND.md`](./FRONTEND.md) for visual design and screen specs.
+
+The app is a **monolithic frontend** talking directly to **Supabase**. There is no backend service layer. Anything that needs to persist beyond the device goes through the Supabase client; everything else stays local.
 
 ## 1. Tech stack
 
@@ -11,7 +13,8 @@ Conventions for the React Native (Expo) UI. Sister docs: [`../FRONTEND.md`](../F
 | Routing | Expo Router (file-based) | in use |
 | Styling | NativeWind (Tailwind) + scoped `StyleSheet` | in use |
 | Animations | `react-native-reanimated` | in use |
-| Server state / caching | `@tanstack/react-query` v5 | planned (no backend yet) |
+| Database + auth + storage | `@supabase/supabase-js` | planned (no schema yet) |
+| Remote-data caching / mutations | `@tanstack/react-query` v5 wrapping the Supabase client | planned |
 | Forms | `react-hook-form` + `zod` + `@hookform/resolvers` | planned |
 | Validation schemas | `zod` | planned |
 | i18n | `i18next` + `react-i18next` | in use |
@@ -20,7 +23,6 @@ Conventions for the React Native (Expo) UI. Sister docs: [`../FRONTEND.md`](../F
 | Analytics | `posthog-react-native` | planned |
 | Icons | hand-bundled SVGs via `react-native-svg-transformer` | in use (Streamline + custom) |
 | Charts | `victory-native` or `react-native-svg-charts` | only if we need them |
-| API client | `@hey-api/openapi-ts` + TanStack Query bindings | planned (spec exists, no backend yet) |
 | Linting | `eslint` + `@react-native/eslint-config` | planned |
 | Formatting | Prettier | planned |
 | Audio | `expo-audio` | in use |
@@ -45,7 +47,7 @@ src/
 ├── contexts/        React contexts (when used — see §6)
 ├── hooks/           custom hooks, one per feature/concern (see §4)
 ├── lib/             framework-agnostic utilities (content seam, audio, pulse, stores)
-├── generated/api/   auto-generated OpenAPI client + TanStack Query bindings (planned)
+├── generated/       auto-generated Supabase types (database.types.ts), planned
 ├── types/           shared TypeScript types
 ├── config/          config constants (URLs, feature-flag defaults)
 ├── styles/          design tokens + theme (today: lib/tokens.ts)
@@ -92,24 +94,28 @@ Rules:
 - **Wrap the generated API client in a hook** — don't call it directly from components. The hook owns query-key shape, error handling, cache invalidation.
 - **No business logic in components** that belongs in a hook.
 
-## 5. API client — auto-generated
+## 5. Data layer — Supabase
+
+The schema in Supabase is the source of truth for types. There is no REST API and no OpenAPI codegen.
 
 Pattern:
 
-1. Server publishes an OpenAPI spec (today: [`../server/openapi.yaml`](../server/openapi.yaml)).
-2. `@hey-api/openapi-ts` generates `src/generated/api/` with typed request/response models and TanStack Query hooks per endpoint.
-3. Feature hooks wrap the generated hooks with project-specific defaults (auth headers, query keys, error mapping).
-4. Run via `npm run generate:api` whenever the spec changes.
+1. Schema lives in Supabase (Postgres tables + RLS policies, plus the auth and storage schemas Supabase manages itself).
+2. Generate typed clients with `supabase gen types typescript --project-id <id> > src/generated/database.types.ts`. Run via `npm run generate:types` whenever the schema changes.
+3. The Supabase client is initialized once in `src/lib/supabase.ts` (with `AsyncStorage` for session persistence and `react-native-url-polyfill/auto`).
+4. Feature hooks wrap query/mutation calls — e.g. `useScenes()` wraps `supabase.from('scenes').select('*')` in a TanStack Query hook with the right query key.
+5. Components consume the feature hooks, never the Supabase client directly.
 
 Rules:
 
-- **Don't hand-write API types.** If the type isn't in `generated/api/`, the server doesn't expose it — add it server-side first.
-- **`generated/api/` is read-only.** Never edit by hand.
-- **Regenerate on every spec change.** Commit the regen alongside the consumer change.
+- **Don't hand-write database row types.** If a type isn't in `database.types.ts`, the schema doesn't define it — add it in Supabase first.
+- **`generated/database.types.ts` is read-only.** Regenerate after every schema change; commit the regen alongside the consumer change.
+- **All queries through feature hooks.** No `supabase.from(...)` in component bodies — the hook owns query keys, error handling, optimistic updates.
+- **Row-Level Security is the auth boundary.** Don't filter by user ID in client code as the security check; rely on RLS policies. Client-side `eq('user_id', auth.uid())` is a UX hint, not a security guarantee.
 
 ## 6. State management
 
-- **Server state → TanStack Query** (every fetch goes through a hook).
+- **Remote state → TanStack Query wrapping the Supabase client** (every read/write goes through a hook).
 - **URL / route state → Expo Router navigation params**.
 - **Cross-cutting client state → React Context** (auth session, theme). One context per concern, providers composed at app root.
 - **Zustand is allowed where Context creates re-render storms or feels overkill.** We currently use it in `lib/session-store.ts`, `lib/crisis-store.ts` — small slices that several disconnected components subscribe to. Default to Context unless there's a concrete reason; reach for Zustand only when measured.
@@ -183,7 +189,7 @@ Rules:
 
 - [ ] Feature folder under `src/components/features/<name>/`
 - [ ] Locale file at `src/locales/<lang>/<name>.json`
-- [ ] Server endpoints added to OpenAPI spec, regenerated, hook wrapper in `src/hooks/use<Name>Api.ts`
+- [ ] Supabase tables + RLS policies in place for the feature's data, types regenerated, hook wrapper in `src/hooks/use<Name>.ts`
 - [ ] Tokens used for every color/space/radius
 - [ ] Forms (if any) use `react-hook-form` + `zod`
 - [ ] User-meaningful actions wired through `useAnalytics()`
@@ -193,7 +199,7 @@ Rules:
 
 The conventions above are the target. As of the last commit, HearO is partly there:
 
-- **In place:** Expo Router, TypeScript strict, NativeWind, tokens in `lib/tokens.ts`, i18n with EN+HE, Reanimated, Zustand stores, content adapter in `lib/content.ts` shaped to mirror the OpenAPI spec, OpenAPI spec at `server/openapi.yaml`, `expo-audio` for trigger playback.
-- **Not yet:** TanStack Query (no backend yet), `@hey-api/openapi-ts` generation, forms (no form screens exist), Sentry, PostHog, formal `src/styles/` and `src/locales/` splits (still inlined while the surface is small), `react-native-svg-charts` (no charts yet), feature folders (the app is small enough that everything lives at `src/app/` and `src/components/`).
+- **In place:** Expo Router, TypeScript strict, NativeWind, tokens in `lib/tokens.ts`, i18n with EN+HE, Reanimated, Zustand stores, content adapter in `lib/content.ts` (local data today, Supabase queries tomorrow), `expo-audio` for trigger playback, Streamline icons via SVG transformer.
+- **Not yet:** Supabase client + schema + generated types, TanStack Query wrapping the client, forms (no form screens exist), Sentry, PostHog, formal `src/styles/` and `src/locales/` splits (still inlined while the surface is small), feature folders (the app is small enough that everything lives at `src/app/` and `src/components/`).
 
 Adopt the structure as new features land; don't refactor purely for the sake of it.

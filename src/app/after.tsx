@@ -9,8 +9,8 @@ import { fonts, tokens } from "@/lib/tokens";
 
 type Reflection = "stillHere" | "shaken" | "steady";
 
-// TODO(api): from the POST /sessions record — this sparkline is a fixed demo
-// curve. It should plot the actual pulseSamples from the session just completed.
+// TODO(supabase): `sessions` table — this sparkline should plot the actual
+// pulseSamples (jsonb column) from the row inserted at session end.
 const SPARK = [72, 74, 79, 88, 96, 108, 112, 105, 94, 86, 78, 74];
 
 function Sparkline() {

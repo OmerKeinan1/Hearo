@@ -1,6 +1,6 @@
 ## Context
 
-Content is scattered across three files with no single owner per scene, which produced the river-voice-on-every-scene bug. The backend doesn't exist yet, but `server/openapi.yaml` already defines the endpoints that will serve this content (`/scenes`, `/sounds`, `/voice-lines`, `/preferences`, `/sessions`, `/users/me`). The job here is to create the client seam those endpoints will plug into, fix the per-scene coherence now, and leave a greppable trail of what's still hard-coded.
+Content is scattered across three files with no single owner per scene, which produced the river-voice-on-every-scene bug. The app's data layer is **Supabase** — no service layer in between. The job here is to create one client-side adapter that local data feeds today and Supabase queries will feed tomorrow, fix the per-scene coherence now, and leave a greppable `TODO(supabase)` trail at every hard-coded site naming the table or query that will replace it.
 
 Constraints: Expo SDK 54, Expo Go (so no native modules that need a custom dev build for the demo), offline-capable, bilingual.
 
@@ -10,12 +10,12 @@ Constraints: Expo SDK 54, Expo Go (so no native modules that need a custom dev b
 
 - One typed module (`content.ts`) that owns all content access, shaped like the API responses.
 - A scene is one coherent bundle; picking Park yields park imagery + park voice.
-- Every hard-coded data site marked `TODO(api): <endpoint>` and greppable.
+- Every hard-coded data site marked `TODO(supabase): <table or query>` and greppable.
 - Looping video on the active session; still image on the Setup picker.
 
 **Non-Goals:**
 
-- Building or calling the backend. No network code lands here.
+- Wiring the Supabase client or any actual queries. The schema doesn't exist yet; this change only prepares the seam.
 - Producing the actual media files (team asset work) — only the integration and the `require()` wiring.
 - Personalizing pulse thresholds or session length (separate future change).
 - Removing the mock pulse generator (it stays until HealthKit lands).
@@ -24,7 +24,7 @@ Constraints: Expo SDK 54, Expo Go (so no native modules that need a custom dev b
 
 ### One adapter module, shaped like the API
 
-`content.ts` exports functions that return the same types the API will return — `getScenes()`, `getSounds()`, `getVoiceScript(scene, phase, lang)`, `getDefaultPreferences()`. Today they read bundled local data; later their bodies become `fetch` calls. Types are shared with (or mirror) `server/openapi.yaml` component schemas.
+`content.ts` exports functions in a stable shape — `getScenes()`, `getSounds()`, `getVoiceScript(scene, phase, lang)`, `getDefaultPreferences()`. Today they read bundled local data; later their bodies become `supabase.from(...).select(...)` calls and the return types become `await`-able. The shape will line up with the auto-generated Supabase types (`database.types.ts`) when the schema lands.
 
 **Alternative considered:** a React context/provider. Rejected for now — the data is static at the local stage, so plain functions are simpler. The provider can wrap `content.ts` later when data becomes async without changing call sites (the functions can return promises then).
 
@@ -50,7 +50,7 @@ This is the fix for the mismatch: the voice script lives *inside* the scene, so 
 
 ### TODO marker convention
 
-`// TODO(api): GET /scenes — replace bundled data with backend fetch`. The `TODO(api)` tag is greppable (`grep -rn "TODO(api)"`), and each names the endpoint from `openapi.yaml`. This is the traceability artifact the proposal promises.
+`// TODO(supabase): supabase.from('scenes').select(...)`. The `TODO(supabase)` tag is greppable (`grep -rn "TODO(supabase)"`), and each names the table or query that will replace it. This is the traceability artifact the proposal promises.
 
 ### What gets marked vs moved
 
@@ -66,4 +66,4 @@ This is the fix for the mismatch: the voice script lives *inside* the scene, so 
 
 ## Migration Plan
 
-No data migration. When the backend exists, each `content.ts` function body swaps from local data to `fetch`, call sites are unchanged (or gain `await`). Rollback = revert; local data is still in the bundle.
+No data migration. When the Supabase schema exists, each `content.ts` function body swaps from local data to a `supabase.from(...)` query, call sites gain `await`. Rollback = revert; local data is still in the bundle.

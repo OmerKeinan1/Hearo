@@ -1,5 +1,43 @@
+# macOS
 .DS_Store
+
+# Logs
 *.log
+npm-debug.*
+yarn-debug.*
+yarn-error.*
+
+# Env
 .env
 .env.local
+.env*.local
+
+# Claude Code — local-only
 .claude/settings.local.json
+
+# Node
+node_modules/
+
+# Expo
+.expo/
+dist/
+web-build/
+expo-env.d.ts
+.metro-health-check*
+
+# TypeScript
+*.tsbuildinfo
+
+# Native — Expo prebuild output
+/ios
+/android
+.kotlin/
+*.orig.*
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+*.pem
+
+example
