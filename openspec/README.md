@@ -24,7 +24,7 @@ openspec/
 
 - **[`../README.md`](../README.md)** — product framing, persona, brand.
 - **[`../FRONTEND.md`](../FRONTEND.md)** — visual design system + screen layout sketches.
-- **[`../server/openapi.yaml`](../server/openapi.yaml)** — backend wire format (OpenAPI 3.1).
+- **Supabase schema** — the database tables that back the app's persistent data. There is no separate API contract; the schema *is* the contract.
 - **`./specs/`** — *requirements* each capability must hold. Testable contracts in Given/When/Then form. These outlive any specific design or implementation.
 
 The other docs say *what we built* and *what it looks like*. The specs here say *what it must do, regardless of how it's built*.

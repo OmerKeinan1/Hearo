@@ -7,9 +7,9 @@ HearO is a mobile app for veterans living with combat-related PTSD. It uses grad
 > Companion docs:
 > - [RATIONALE.md](./RATIONALE.md) — clinical and design reasoning, with citations.
 > - [FRONTEND.md](./FRONTEND.md) — visual design system + screen specs.
-> - [ui/CONVENTIONS.md](./ui/CONVENTIONS.md) — frontend code conventions (stack, folder structure, hooks, naming).
-> - [server/README.md](./server/README.md) — backend API contract (OpenAPI 3.1 at [server/openapi.yaml](./server/openapi.yaml)).
+> - [CONVENTIONS.md](./CONVENTIONS.md) — frontend code conventions (stack, folder structure, hooks, naming).
 > - [openspec/README.md](./openspec/README.md) — capability requirements in [openspec.dev](https://openspec.dev) form.
+> - [voice-scripts/](./voice-scripts/) — source text for the in-session voice narration, per scene, EN + HE.
 
 ## The user we're designing for
 
@@ -90,11 +90,15 @@ Visual layout in [FRONTEND.md](./FRONTEND.md#crisis-sheet).
 
 Technical implementation (i18n, RTL, fonts) lives in [FRONTEND.md](./FRONTEND.md#bilingual--rtl).
 
-## Scope: what frontend owns
+## Architecture
 
-Frontend owns everything the user sees and touches: the six screens, the design system, the audio playback orchestration, the pulse-driven voice/breathing response logic, the i18n setup, the HealthKit hook for live pulse, a mocked pulse generator for demoing without a watch present.
+The app is a **monolithic frontend** (React Native + Expo) talking directly to **Supabase** for persistence and auth. No Node/Express service layer in between. Anything the app needs to store or read remotely — user profile, scene selection, session history, intensity-ceiling memory — goes through the Supabase client. Anything purely local (UI state, the pulse curve while a session is running, the audio playback engine, the breathing animation) stays on device.
 
-Frontend does *not* own: user accounts, persistence beyond device, any server-side AI, the Apple Watch companion app (if any). Those belong to the backend team. The frontend can demo end-to-end without any of them — pulse is mocked when no watch is paired, voice lines are pre-recorded clips, scene/sound state is local.
+This shifts a few things:
+
+- There's no REST API to document; the data contract lives in the Supabase schema.
+- The content-provisioning adapter ([`src/lib/content.ts`](./src/lib/content.ts)) is the seam where local fallback data gets replaced by Supabase reads when the schema lands. Every site we'll need to migrate is marked `TODO(supabase)` in code.
+- The Apple Watch HealthKit stream stays on-device and is not posted to Supabase — pulse stays private unless the user explicitly shares a session.
 
 ## Assets needed
 
