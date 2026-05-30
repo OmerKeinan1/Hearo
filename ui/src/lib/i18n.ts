@@ -40,6 +40,8 @@ const resources = {
         louder: "Louder",
         pulse: "Pulse",
         pause: "Pause",
+        breatheIn: "Breathe in",
+        breatheOut: "Breathe out",
       },
       after: {
         duration: "You were here\nfor six minutes.",
@@ -98,6 +100,8 @@ const resources = {
         louder: "חזק יותר",
         pulse: "דופק",
         pause: "השהה",
+        breatheIn: "שאיפה",
+        breatheOut: "נשיפה",
       },
       after: {
         duration: "היית כאן\nשש דקות.",

@@ -5,39 +5,12 @@ import { useTranslation } from "react-i18next";
 
 import { CrisisAffordance } from "@/components/CrisisAffordance";
 import { Icon } from "@/components/Icon";
-import { getScenes, getSounds, localize } from "@/lib/content";
+import { SceneCarousel } from "@/components/SceneCarousel";
+import { getSounds, localize } from "@/lib/content";
 import { useSessionStore } from "@/lib/session-store";
 import { fonts, tokens } from "@/lib/tokens";
 
-const SCENES = getScenes();
 const SOUNDS = getSounds();
-
-function Radio({ selected }: { selected: boolean }) {
-  return (
-    <View
-      style={{
-        width: 18,
-        height: 18,
-        borderRadius: 9,
-        borderWidth: 1,
-        borderColor: selected ? tokens.accent : tokens.textMute,
-        alignItems: "center",
-        justifyContent: "center",
-      }}
-    >
-      {selected ? (
-        <View
-          style={{
-            width: 8,
-            height: 8,
-            borderRadius: 4,
-            backgroundColor: tokens.accent,
-          }}
-        />
-      ) : null}
-    </View>
-  );
-}
 
 function Check({ selected }: { selected: boolean }) {
   return (
@@ -96,31 +69,7 @@ export default function Setup() {
           {t("setup.sceneQuestion")}
         </Text>
 
-        <View className="px-8">
-          {SCENES.map((s) => {
-            const selected = scene === s.key;
-            return (
-              <Pressable
-                key={s.key}
-                onPress={() => setScene(s.key)}
-                hitSlop={6}
-                style={{ flexDirection: "row", alignItems: "center", paddingVertical: 10 }}
-              >
-                <Radio selected={selected} />
-                <Text
-                  style={{
-                    color: selected ? tokens.text : tokens.textMute,
-                    fontFamily: fonts.body,
-                    fontSize: 17,
-                    marginLeft: 14,
-                  }}
-                >
-                  {localize(s.label, i18n.language)}
-                </Text>
-              </Pressable>
-            );
-          })}
-        </View>
+        <SceneCarousel value={scene} onChange={setScene} lang={i18n.language} />
 
         <View className="px-8 pt-12">
           <View style={{ width: 28, height: 1, backgroundColor: tokens.textMute, opacity: 0.5 }} />
