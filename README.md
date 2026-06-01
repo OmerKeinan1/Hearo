@@ -100,6 +100,24 @@ This shifts a few things:
 - The content-provisioning adapter ([`src/lib/content.ts`](./src/lib/content.ts)) is the seam where local fallback data gets replaced by Supabase reads when the schema lands. Every site we'll need to migrate is marked `TODO(supabase)` in code.
 - The Apple Watch HealthKit stream stays on-device and is not posted to Supabase — pulse stays private unless the user explicitly shares a session.
 
+## Android release CI
+
+The GitHub Actions workflow at [`.github/workflows/android-play-publish.yml`](./.github/workflows/android-play-publish.yml) builds a production Android App Bundle with EAS and auto-submits it to Google Play using the `production` profile in [`eas.json`](./eas.json). It runs manually from GitHub Actions or when a tag matching `android-v*` is pushed.
+
+Required GitHub configuration:
+
+- Secret `EXPO_TOKEN`: an Expo access token for the account or organization that owns the EAS project.
+
+The Android package (`com.omerkei.hearo`) and linked EAS project ID are committed in [`app.json`](./app.json) so the workflow can run non-interactively.
+
+One-time release setup:
+
+- Initialize EAS and run a successful Android production build locally once so signing credentials exist for the package.
+- Upload the Google Play service account key in EAS credentials for the Android production package.
+- Upload the first release manually in Google Play Console before relying on API submissions.
+
+The committed submit profile publishes to the Google Play `production` track with `releaseStatus: completed`. Change `eas.json` to `internal`, `alpha`, or `beta` if the pipeline should publish to a testing track instead.
+
 ## Assets needed
 
 To go from scaffold to demo-ready, these need to be produced (out of frontend scope to create, in scope to integrate):
