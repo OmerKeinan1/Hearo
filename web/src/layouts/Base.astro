@@ -1,0 +1,56 @@
+---
+import "../styles/global.css";
+
+interface Props {
+  title: string;
+  description?: string;
+}
+
+const { title, description = "A quiet place to walk again. Gradual, consent-based sound exposure for veterans living with combat-related PTSD." } = Astro.props;
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content={description} />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Frank+Ruhl+Libre:wght@400;500&family=Heebo:wght@400;500&display=swap"
+    />
+    <title>{title}</title>
+  </head>
+  <body class="min-h-screen flex flex-col">
+    <header class="px-6 sm:px-12 pt-8 pb-4">
+      <nav class="max-w-5xl mx-auto flex items-center justify-between">
+        <a href="/" class="font-display text-xl tracking-tight">
+          hear<span class="text-accent">○</span>
+        </a>
+        <a href="/privacy" class="text-sm text-text-mute hover:text-text transition-colors">
+          Privacy
+        </a>
+      </nav>
+    </header>
+
+    <main class="flex-1">
+      <slot />
+    </main>
+
+    <footer class="px-6 sm:px-12 py-12 mt-16 border-t border-text-mute/20">
+      <div class="max-w-5xl mx-auto flex flex-col sm:flex-row items-start justify-between gap-6 text-sm text-text-mute">
+        <div>
+          <p class="font-display text-base text-text mb-1">HearO</p>
+          <p>A quiet place to walk again.</p>
+        </div>
+        <div class="flex gap-6">
+          <a href="/" class="hover:text-text transition-colors">Home</a>
+          <a href="/privacy" class="hover:text-text transition-colors">Privacy</a>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>
