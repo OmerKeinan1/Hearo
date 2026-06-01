@@ -5,6 +5,7 @@ A quiet place to walk again.
 HearO is a mobile app for veterans living with combat-related PTSD. It uses gradual, consent-based sound exposure — ambient soundscapes layered with user-chosen trigger sounds — guided by a pre-recorded voice and watched over by the user's Apple Watch pulse. The user has two control layers: a manual intensity dial that's always reachable, and an automatic pulse-driven response that softens things when their body starts to spike. Both can only make things softer, never louder. No popups. No alarms. The app does the work the user shouldn't have to.
 
 > Companion docs:
+>
 > - [RATIONALE.md](./RATIONALE.md) — clinical and design reasoning, with citations.
 > - [FRONTEND.md](./FRONTEND.md) — visual design system + screen specs.
 > - [CONVENTIONS.md](./CONVENTIONS.md) — frontend code conventions (stack, folder structure, hooks, naming).
@@ -13,11 +14,11 @@ HearO is a mobile app for veterans living with combat-related PTSD. It uses grad
 
 ## The user we're designing for
 
-A combat veteran. Possibly currently serving, possibly discharged. Knows their triggers. Wants tools, not therapy-marketing. Cares about privacy. Skeptical of "wellness apps" and allergic to the word *hero*.
+A combat veteran. Possibly currently serving, possibly discharged. Knows their triggers. Wants tools, not therapy-marketing. Cares about privacy. Skeptical of "wellness apps" and allergic to the word _hero_.
 
 **Hard constraints driven by this persona:**
 
-- **No military iconography anywhere.** No camo, dog tags, ranks, flags, silhouettes. Those *are* the triggers we are treating.
+- **No military iconography anywhere.** No camo, dog tags, ranks, flags, silhouettes. Those _are_ the triggers we are treating.
 - **No "thank you for your service" framing.** No hero copy. No badge-of-honor visual language.
 - **Privacy is foreground, not buried in settings.** Mental-health stigma in military culture is real and load-bearing on adoption.
 - **Crisis access is one tap from every screen.** Quiet, not alarming.
@@ -30,7 +31,7 @@ A combat veteran. Possibly currently serving, possibly discharged. Knows their t
 3. A pre-recorded voice narrates the scene in soft, second-person prose.
 4. After ~60–90 seconds, a user-consented trigger sound enters the soundscape (motorcycle, helicopter, etc.).
 5. **Two control layers run in parallel:**
-   - **Manual** — the user can drag an always-visible *softer / louder* slider on the session screen at any time. Slider sets a ceiling on trigger volume.
+   - **Manual** — the user can drag an always-visible _softer / louder_ slider on the session screen at any time. Slider sets a ceiling on trigger volume.
    - **Automatic** — Apple Watch streams pulse to the app. If pulse crosses threshold, voice softens to a calming script, breathing circle slows, trigger sound auto-attenuates below the user's ceiling. No popup, no alert.
 6. Session ends after ~6 minutes. User sees pulse curve and a three-option check-in.
 
@@ -42,11 +43,11 @@ A combat veteran. Possibly currently serving, possibly discharged. Knows their t
 
 1. Welcome → Permissions → Setup (scene + sounds) → Home — about 45 seconds, sells the consent moment.
 2. Begin session. Ambient plays. Voice narrates. ~30 seconds of calm.
-3. Trigger sound enters. The presenter drags the intensity slider down a notch — *the user is always in control*. ~15 seconds.
+3. Trigger sound enters. The presenter drags the intensity slider down a notch — _the user is always in control_. ~15 seconds.
 4. Trigger comes again, pulse climbs anyway. Voice script shifts. Breathing slows. App auto-responds without the user touching the phone. ~45 seconds. **This is the moment.**
 5. After-session screen: pulse sparkline, three-option reflection.
 
-The two beats — *manual softening* then *automatic softening* — narrate the two-layer design without anyone having to explain it. The pitch deck can stay quiet while the app speaks.
+The two beats — _manual softening_ then _automatic softening_ — narrate the two-layer design without anyone having to explain it. The pitch deck can stay quiet while the app speaks.
 
 ## Brand
 
@@ -76,9 +77,9 @@ the user            →  "you"               ✗  "the patient", "user"
 
 ## Crisis access
 
-A *need someone to talk to right now?* sheet is reachable from every screen via a small **i** glyph. The `i` reads as info/accessibility, not alarm — alarming UI in a crisis moment is itself activating. The sheet headline does not use the words *crisis*, *panic*, *emergency*, or *help* — the user knows why they tapped.
+A _need someone to talk to right now?_ sheet is reachable from every screen via a small **i** glyph. The `i` reads as info/accessibility, not alarm — alarming UI in a crisis moment is itself activating. The sheet headline does not use the words _crisis_, _panic_, _emergency_, or _help_ — the user knows why they tapped.
 
-Primary action: **call ERAN 1201** (ער"ן — Israel's free, 24/7, anonymous emotional first-aid hotline). Secondary action: a *person you trust* shortcut into the user's nominated contacts.
+Primary action: **call ERAN 1201** (ער"ן — Israel's free, 24/7, anonymous emotional first-aid hotline). Secondary action: a _person you trust_ shortcut into the user's nominated contacts.
 
 Visual layout in [FRONTEND.md](./FRONTEND.md#crisis-sheet).
 
@@ -99,6 +100,24 @@ This shifts a few things:
 - There's no REST API to document; the data contract lives in the Supabase schema.
 - The content-provisioning adapter ([`src/lib/content.ts`](./src/lib/content.ts)) is the seam where local fallback data gets replaced by Supabase reads when the schema lands. Every site we'll need to migrate is marked `TODO(supabase)` in code.
 - The Apple Watch HealthKit stream stays on-device and is not posted to Supabase — pulse stays private unless the user explicitly shares a session.
+
+## Android release CI
+
+The GitHub Actions workflow at [`.github/workflows/android-play-publish.yml`](./.github/workflows/android-play-publish.yml) builds a production Android App Bundle with EAS and auto-submits it to Google Play using the `production` profile in [`eas.json`](./eas.json). It runs manually from GitHub Actions or when a tag matching `android-v*` is pushed.
+
+Required GitHub configuration:
+
+- Secret `EXPO_TOKEN`: an Expo access token for the account or organization that owns the EAS project.
+
+The Android package (`com.techheal.hearo`) and linked EAS project ID are committed in [`app.json`](./app.json) so the workflow can run non-interactively.
+
+One-time release setup:
+
+- Initialize EAS and run a successful Android production build locally once so signing credentials exist for the package.
+- Upload the Google Play service account key in EAS credentials for the Android production package.
+- Upload the first release manually in Google Play Console before relying on API submissions.
+
+The committed submit profile publishes to the Google Play `production` track with `releaseStatus: completed`. Change `eas.json` to `internal`, `alpha`, or `beta` if the pipeline should publish to a testing track instead.
 
 ## Assets needed
 
@@ -129,7 +148,7 @@ Until real assets land, screens use silence stubs so the app runs end-to-end.
 
 ## Open questions
 
-- **Wordmark final form.** Direction is *hear + O* with O = breathing circle. Final graphic file needs to be locked before any pixel-level brand work.
+- **Wordmark final form.** Direction is _hear + O_ with O = breathing circle. Final graphic file needs to be locked before any pixel-level brand work.
 - **Watch companion app.** Out of frontend scope for this hackathon. Watch acts as a sensor only, no UI on the wrist.
 - **AI voice generation pipeline.** If we want voice lines generated rather than human-recorded, that's a backend decision (ElevenLabs, Hume, etc.) — current spec assumes pre-recorded human or pre-generated clips.
 

@@ -1,0 +1,70 @@
+name: Publish Android to Google Play
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - "android-v*"
+
+concurrency:
+  group: android-play-publish
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    name: Build AAB and publish
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Setup Expo and EAS
+        uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Validate Expo release config
+        shell: bash
+        run: |
+          node <<'NODE'
+          const { execSync } = require("child_process");
+          const config = JSON.parse(
+            execSync("npx expo config --json", {
+              encoding: "utf8",
+              stdio: ["ignore", "pipe", "inherit"],
+            })
+          );
+          const missing = [];
+
+          if (!config.android?.package) {
+            missing.push("expo.android.package");
+          }
+
+          if (!config.extra?.eas?.projectId) {
+            missing.push("expo.extra.eas.projectId");
+          }
+
+          if (missing.length > 0) {
+            console.error(`Missing required release config: ${missing.join(", ")}`);
+            process.exit(1);
+          }
+
+          console.log(`Android package: ${config.android.package}`);
+          console.log(`EAS project ID: ${config.extra.eas.projectId}`);
+          NODE
+
+      - name: Build AAB and publish to Google Play
+        run: eas build --platform android --profile production --non-interactive --auto-submit-with-profile production
