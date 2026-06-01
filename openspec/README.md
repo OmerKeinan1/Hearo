@@ -23,7 +23,7 @@ openspec/
 ## How OpenSpec relates to the other docs
 
 - **[`../README.md`](../README.md)** — product framing, persona, brand.
-- **[`../FRONTEND.md`](../FRONTEND.md)** — visual design system + screen layout sketches.
+- **[`../docs/FRONTEND.md`](../docs/FRONTEND.md)** — visual design system + screen layout sketches.
 - **Supabase schema** — the database tables that back the app's persistent data. There is no separate API contract; the schema *is* the contract.
 - **`./specs/`** — *requirements* each capability must hold. Testable contracts in Given/When/Then form. These outlive any specific design or implementation.
 

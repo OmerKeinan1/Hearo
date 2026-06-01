@@ -1,6 +1,13 @@
+---
+title: Frontend code conventions
+tags: [code, conventions, stack, frontend-dev]
+audience: frontend-dev
+status: stable
+---
+
 # HearO frontend conventions
 
-Conventions for the React Native (Expo) UI. Sister docs: [`FRONTEND.md`](./FRONTEND.md) for visual design and screen specs.
+Conventions for the React Native (Expo) UI. Sister doc: [`FRONTEND.md`](./FRONTEND.md) for visual design and screen specs.
 
 The app is a **monolithic frontend** talking directly to **Supabase**. There is no backend service layer. Anything that needs to persist beyond the device goes through the Supabase client; everything else stays local.
 
@@ -67,7 +74,7 @@ Centralize tokens in `src/lib/tokens.ts` (today's location) — migrating to `sr
 
 Token scales to define:
 
-- **Colors** — semantic names: `bg`, `text`, `accent`, `critical`, `sage`. See [`../FRONTEND.md#palette`](../FRONTEND.md#palette) for the canonical palette and rationale.
+- **Colors** — semantic names: `bg`, `text`, `accent`, `critical`, `sage`. See [`FRONTEND.md#palette`](./FRONTEND.md#palette) for the canonical palette and rationale.
 - **Spacing** — 4px-based scale: 1=4, 2=8, 3=12, 4=16, 6=24, 8=32, 12=48, 16=64.
 - **Typography** — token names, not raw sizes: `xs`, `sm`, `md`, `lg`, `xl`, `2xl`, `3xl`. Define font family, weight, line-height per token.
 - **Radii** — `sm`, `md`, `lg`, `full`.

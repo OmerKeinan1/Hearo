@@ -4,13 +4,13 @@ A quiet place to walk again.
 
 HearO is a mobile app for veterans living with combat-related PTSD. It uses gradual, consent-based sound exposure — ambient soundscapes layered with user-chosen trigger sounds — guided by a pre-recorded voice and watched over by the user's Apple Watch pulse. The user has two control layers: a manual intensity dial that's always reachable, and an automatic pulse-driven response that softens things when their body starts to spike. Both can only make things softer, never louder. No popups. No alarms. The app does the work the user shouldn't have to.
 
-> Companion docs:
+> Companion docs (see [`docs/README.md`](./docs/README.md) for the tagged index):
 >
-> - [RATIONALE.md](./RATIONALE.md) — clinical and design reasoning, with citations.
-> - [FRONTEND.md](./FRONTEND.md) — visual design system + screen specs.
-> - [CONVENTIONS.md](./CONVENTIONS.md) — frontend code conventions (stack, folder structure, hooks, naming).
-> - [openspec/README.md](./openspec/README.md) — capability requirements in [openspec.dev](https://openspec.dev) form.
-> - [voice-scripts/](./voice-scripts/) — source text for the in-session voice narration, per scene, EN + HE.
+> - [`docs/RATIONALE.md`](./docs/RATIONALE.md) — clinical and design reasoning, with citations.
+> - [`docs/FRONTEND.md`](./docs/FRONTEND.md) — visual design system + screen specs.
+> - [`docs/CONVENTIONS.md`](./docs/CONVENTIONS.md) — frontend code conventions (stack, folder structure, hooks, naming).
+> - [`openspec/README.md`](./openspec/README.md) — capability requirements in [openspec.dev](https://openspec.dev) form.
+> - [`voice-scripts/`](./voice-scripts/) — source text for the in-session voice narration, per scene, EN + HE.
 
 ## The user we're designing for
 
@@ -81,7 +81,7 @@ A _need someone to talk to right now?_ sheet is reachable from every screen via 
 
 Primary action: **call ERAN 1201** (ער"ן — Israel's free, 24/7, anonymous emotional first-aid hotline). Secondary action: a _person you trust_ shortcut into the user's nominated contacts.
 
-Visual layout in [FRONTEND.md](./FRONTEND.md#crisis-sheet).
+Visual layout in [`docs/FRONTEND.md`](./docs/FRONTEND.md#crisis-sheet).
 
 ## Languages
 
@@ -89,7 +89,7 @@ Visual layout in [FRONTEND.md](./FRONTEND.md#crisis-sheet).
 - Fallback for non-EN/non-HE devices: **Hebrew** (the demo audience is Israeli).
 - Wordmark stays English in both — it is a logo, not text.
 
-Technical implementation (i18n, RTL, fonts) lives in [FRONTEND.md](./FRONTEND.md#bilingual--rtl).
+Technical implementation (i18n, RTL, fonts) lives in [`docs/FRONTEND.md`](./docs/FRONTEND.md#bilingual--rtl).
 
 ## Architecture
 

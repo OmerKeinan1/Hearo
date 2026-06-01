@@ -1,3 +1,10 @@
+---
+title: Why HearO — clinical and design rationale
+tags: [clinical, product, persona, research]
+audience: everyone, clinician
+status: stable
+---
+
 # Why HearO
 
 The clinical and design reasoning behind the product. Plain language, no marketing.
