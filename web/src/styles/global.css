@@ -1,0 +1,29 @@
+@import "tailwindcss";
+
+/*
+ * Brand tokens — kept in sync with the mobile app's lib/tokens.ts.
+ * If you edit these, edit the mobile copy too (until the team extracts a
+ * shared package).
+ */
+@theme {
+  --color-bg: #f2ebdd;
+  --color-bg-elev: #e8decb;
+  --color-bg-deep: #1a1310;
+  --color-text: #2e2823;
+  --color-text-mute: #7a7060;
+  --color-accent: #c17a45;
+  --color-accent-soft: #9a6238;
+  --color-sage: #7e9468;
+  --color-critical: #bc6a4f;
+
+  --font-display: "Frank Ruhl Libre", Georgia, serif;
+  --font-body: "Heebo", system-ui, -apple-system, sans-serif;
+}
+
+html,
+body {
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-family: var(--font-body);
+  -webkit-font-smoothing: antialiased;
+}

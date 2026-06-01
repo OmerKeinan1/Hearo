@@ -11,6 +11,7 @@ HearO is a mobile app for veterans living with combat-related PTSD. It uses grad
 > - [`docs/CONVENTIONS.md`](./docs/CONVENTIONS.md) — frontend code conventions (stack, folder structure, hooks, naming).
 > - [`openspec/README.md`](./openspec/README.md) — capability requirements in [openspec.dev](https://openspec.dev) form.
 > - [`voice-scripts/`](./voice-scripts/) — source text for the in-session voice narration, per scene, EN + HE.
+> - [`web/README.md`](./web/README.md) — marketing site (Astro + Tailwind), landing + privacy policy.
 
 ## The user we're designing for
 
