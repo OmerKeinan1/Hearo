@@ -1,8 +1,15 @@
+---
+title: Frontend spec
+tags: [design, ui, screen-specs, frontend-dev]
+audience: frontend-dev, designer
+status: stable
+---
+
 # HearO — Frontend spec
 
 Design system, screen specs, and implementation notes for the mobile app.
 
-> For product framing, persona, brand reading, scope, and assets needed, see [README.md](./README.md).
+> For product framing, persona, brand reading, scope, and assets needed, see [`../README.md`](../README.md).
 
 ## Design language
 
