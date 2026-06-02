@@ -1,0 +1,51 @@
+name: EAS Update
+
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      # Skip OTA on changes that don't affect the JS bundle.
+      - "web/**"
+      - "docs/**"
+      - "voice-scripts/**"
+      - "openspec/**"
+      - "**.md"
+      - ".github/**"
+  workflow_dispatch:
+
+concurrency:
+  group: eas-update
+  cancel-in-progress: true
+
+jobs:
+  update:
+    name: Publish OTA bundle
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Setup Expo and EAS
+        uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Publish update
+        # `--auto` picks the channel from the current git branch (main → main)
+        # and writes a sensible commit-derived message. Bundles for every
+        # platform; nothing happens on platforms that aren't built yet
+        # (the update sits waiting for a matching runtime version).
+        run: eas update --auto --non-interactive
