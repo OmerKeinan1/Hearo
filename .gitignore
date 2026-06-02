@@ -28,6 +28,9 @@ expo-env.d.ts
 # TypeScript
 *.tsbuildinfo
 
+# Test coverage reports
+coverage/
+
 # Native — Expo prebuild output
 /ios
 /android
