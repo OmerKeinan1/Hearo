@@ -13,7 +13,7 @@ yarn-error.*
 .env*.local
 
 # Claude Code — local-only
-.claude/settings.local.json
+.claude/
 
 # Node
 node_modules/
@@ -41,3 +41,7 @@ expo-env.d.ts
 *.pem
 
 example
+
+.claude-flow/
+.mcp.json
+.claude/settings.json
