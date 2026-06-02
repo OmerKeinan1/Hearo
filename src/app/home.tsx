@@ -8,6 +8,7 @@ import { Icon } from "@/components/Icon";
 import { getScene, getSound, localize } from "@/lib/content";
 import { useDisplayName } from "@/lib/displayName";
 import { useSessionStore } from "@/lib/session-store";
+import { getTimeOfDay } from "@/lib/timeOfDay";
 import { fonts, tokens } from "@/lib/tokens";
 
 export default function Home() {
@@ -15,6 +16,7 @@ export default function Home() {
   const { t, i18n } = useTranslation();
   const { scene, sounds } = useSessionStore();
   const { name } = useDisplayName();
+  const band = getTimeOfDay();
 
   const sceneShort = localize(getScene(scene).short, i18n.language);
   const primarySound = sounds[0];
@@ -47,7 +49,9 @@ export default function Home() {
             marginTop: 24,
           }}
         >
-          {name ? t("home.greeting", { name }) : t("home.greetingNoName")}
+          {name
+            ? t(`home.greeting.${band}`, { name })
+            : t(`home.greetingNoName.${band}`)}
         </Text>
 
         <View className="flex-1 justify-center">

@@ -28,8 +28,18 @@ const resources = {
         back: "Back",
       },
       home: {
-        greeting: "Good evening,\n{{name}}.",
-        greetingNoName: "Good evening.",
+        greeting: {
+          morning: "Good morning,\n{{name}}.",
+          afternoon: "Good afternoon,\n{{name}}.",
+          evening: "Good evening,\n{{name}}.",
+          night: "Good night,\n{{name}}.",
+        },
+        greetingNoName: {
+          morning: "Good morning.",
+          afternoon: "Good afternoon.",
+          evening: "Good evening.",
+          night: "Good night.",
+        },
         todaysWalk: "Today's walk",
         durationHint: "About six minutes",
         begin: "Begin",
@@ -89,8 +99,18 @@ const resources = {
         back: "חזור",
       },
       home: {
-        greeting: "ערב טוב,\n{{name}}.",
-        greetingNoName: "ערב טוב.",
+        greeting: {
+          morning: "בוקר טוב,\n{{name}}.",
+          afternoon: "צהריים טובים,\n{{name}}.",
+          evening: "ערב טוב,\n{{name}}.",
+          night: "לילה טוב,\n{{name}}.",
+        },
+        greetingNoName: {
+          morning: "בוקר טוב.",
+          afternoon: "צהריים טובים.",
+          evening: "ערב טוב.",
+          night: "לילה טוב.",
+        },
         todaysWalk: "ההליכה של היום",
         durationHint: "בערך שש דקות",
         begin: "התחל",

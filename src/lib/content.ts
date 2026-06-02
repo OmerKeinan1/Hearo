@@ -7,6 +7,8 @@
 
 import { ImageSourcePropType } from "react-native";
 
+import { getDefaultSceneForTimeOfDay } from "@/lib/timeOfDay";
+
 export type SceneKey = "beach" | "park" | "cafe" | "road";
 export type SoundKey =
   | "motorcycle"
@@ -257,5 +259,11 @@ export function getSound(key: SoundKey): Sound {
 // TODO(supabase): `user_preferences` row keyed by `auth.uid()` — scene, consented sounds,
 // learned intensity ceilings per sound.
 export function getDefaultPreferences(): Preferences {
-  return { scene: "park", sounds: ["motorcycle"] };
+  // Scene default follows the device's local time of day. Once we persist
+  // user preferences (zustand-persist + storage seam), the persisted choice
+  // takes precedence and this default only applies on first launch.
+  return {
+    scene: getDefaultSceneForTimeOfDay(),
+    sounds: ["motorcycle"],
+  };
 }
