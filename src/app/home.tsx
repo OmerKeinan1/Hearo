@@ -6,6 +6,7 @@ import { useTranslation } from "react-i18next";
 import { CrisisAffordance } from "@/components/CrisisAffordance";
 import { Icon } from "@/components/Icon";
 import { getScene, getSound, localize } from "@/lib/content";
+import { useDisplayName } from "@/lib/displayName";
 import { useSessionStore } from "@/lib/session-store";
 import { fonts, tokens } from "@/lib/tokens";
 
@@ -13,6 +14,7 @@ export default function Home() {
   const router = useRouter();
   const { t, i18n } = useTranslation();
   const { scene, sounds } = useSessionStore();
+  const { name } = useDisplayName();
 
   const sceneShort = localize(getScene(scene).short, i18n.language);
   const primarySound = sounds[0];
@@ -36,9 +38,6 @@ export default function Home() {
           <View style={{ width: 28, height: 1, backgroundColor: tokens.accent }} />
         </View>
 
-        {/* TODO(supabase): the name "Shai" is hard-coded in the home.greeting
-            i18n string. Replace with the user's display_name from the
-            `profiles` row keyed by auth.uid(). */}
         <Text
           style={{
             color: tokens.text,
@@ -48,7 +47,7 @@ export default function Home() {
             marginTop: 24,
           }}
         >
-          {t("home.greeting")}
+          {name ? t("home.greeting", { name }) : t("home.greetingNoName")}
         </Text>
 
         <View className="flex-1 justify-center">

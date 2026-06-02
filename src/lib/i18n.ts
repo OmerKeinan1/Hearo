@@ -28,7 +28,8 @@ const resources = {
         back: "Back",
       },
       home: {
-        greeting: "Good evening,\nShai.",
+        greeting: "Good evening,\n{{name}}.",
+        greetingNoName: "Good evening.",
         todaysWalk: "Today's walk",
         durationHint: "About six minutes",
         begin: "Begin",
@@ -88,7 +89,8 @@ const resources = {
         back: "חזור",
       },
       home: {
-        greeting: "ערב טוב,\nשי.",
+        greeting: "ערב טוב,\n{{name}}.",
+        greetingNoName: "ערב טוב.",
         todaysWalk: "ההליכה של היום",
         durationHint: "בערך שש דקות",
         begin: "התחל",
