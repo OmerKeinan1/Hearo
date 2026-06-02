@@ -12,6 +12,7 @@ const KEYS = {
   displayName: `${PREFIX}displayName`,
   displayNameResolved: `${PREFIX}displayNameResolved`,
   reminderSchedule: `${PREFIX}reminderSchedule`,
+  trustedContactIds: `${PREFIX}trustedContactIds`,
 } as const;
 
 /** A name we've resolved (or explicitly determined we can't resolve) for the
@@ -56,4 +57,22 @@ export async function setReminderSchedule(schedule: ReminderSchedule | null): Pr
   } else {
     await AsyncStorage.setItem(KEYS.reminderSchedule, JSON.stringify(schedule));
   }
+}
+
+/** Stable contact IDs the user has nominated as trusted. Order is preserved
+ *  (most-recently-added first, per the crisis-access spec). Capped externally
+ *  in lib/trustedContacts.ts. */
+export async function getTrustedContactIds(): Promise<string[]> {
+  const raw = await AsyncStorage.getItem(KEYS.trustedContactIds);
+  if (!raw) return [];
+  try {
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed.filter((x) => typeof x === "string") : [];
+  } catch {
+    return [];
+  }
+}
+
+export async function setTrustedContactIds(ids: string[]): Promise<void> {
+  await AsyncStorage.setItem(KEYS.trustedContactIds, JSON.stringify(ids));
 }

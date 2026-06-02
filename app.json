@@ -14,7 +14,10 @@
     "scheme": "hearo",
     "userInterfaceStyle": "automatic",
     "ios": {
-      "icon": "./assets/expo.icon"
+      "icon": "./assets/expo.icon",
+      "infoPlist": {
+        "NSContactsUsageDescription": "We use this so you can quickly call someone you trust during a crisis moment. Your contacts stay on your device — we don't upload them."
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -55,6 +58,12 @@
         {
           "icon": "./assets/images/icon.png",
           "color": "#C17A45"
+        }
+      ],
+      [
+        "expo-contacts",
+        {
+          "contactsPermission": "We use this so you can quickly call someone you trust during a crisis moment. Your contacts stay on your device — we don't upload them."
         }
       ]
     ],
