@@ -41,8 +41,13 @@
     "zustand": "^5.0.14"
   },
   "devDependencies": {
+    "@testing-library/react-native": "^13.3.3",
+    "@types/jest": "^30.0.0",
     "@types/react": "~19.2.14",
+    "expo-modules-core": "^56.0.14",
+    "jest-expo": "^56.0.4",
     "react-native-svg-transformer": "^1.5.3",
+    "react-test-renderer": "^19.2.3",
     "tailwindcss": "^3.4.19",
     "typescript": "~6.0.3"
   },
@@ -52,7 +57,30 @@
     "android": "expo start --android",
     "ios": "expo start --ios",
     "web": "expo start --web",
-    "lint": "expo lint"
+    "lint": "expo lint",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage"
+  },
+  "jest": {
+    "preset": "jest-expo",
+    "moduleNameMapper": {
+      "\\.(png|jpg|jpeg|gif|webp|svg|mp3|wav|m4a|mp4)$": "<rootDir>/test/assetMock.js",
+      "^@/assets/(.*)$": "<rootDir>/assets/$1",
+      "^@/(.*)$": "<rootDir>/src/$1"
+    },
+    "collectCoverageFrom": [
+      "src/lib/**/*.{ts,tsx}",
+      "src/components/**/*.{ts,tsx}",
+      "!src/lib/tokens.ts",
+      "!src/lib/i18n.ts"
+    ],
+    "coverageThreshold": {
+      "./src/lib/**/*.{ts,tsx}": {
+        "lines": 85,
+        "branches": 80
+      }
+    }
   },
   "private": true
 }
