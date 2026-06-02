@@ -9,6 +9,7 @@ Long-form documentation for HearO. Each file has YAML front-matter with tags and
 | [`RATIONALE.md`](./RATIONALE.md) | `clinical`, `product`, `persona`, `research` | everyone, clinician | Why the product is shaped the way it is. Exposure-therapy literature, persona constraints, what HearO is *not*. |
 | [`FRONTEND.md`](./FRONTEND.md) | `design`, `ui`, `screen-specs`, `frontend-dev` | frontend-dev, designer | Palette, typography, motion, screen-by-screen ASCII mockups, crisis-sheet pattern, RTL and bilingual implementation. |
 | [`CONVENTIONS.md`](./CONVENTIONS.md) | `code`, `conventions`, `stack`, `frontend-dev` | frontend-dev | Tech stack, folder structure, hooks pattern, state management rules, Supabase typed-client workflow, day-one feature checklist. |
+| [`research/in-the-moment-feature.md`](./research/in-the-moment-feature.md) | `clinical`, `product`, `research` | everyone, clinician, product | Exploratory memo: an on-device "before & after" regulation feature, the renewal/transfer gap it targets, and the peer-reviewed engagement evidence on whether users self-initiate during a trigger. |
 
 ## Related (not in this folder)
 
