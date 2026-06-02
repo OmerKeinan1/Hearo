@@ -20,6 +20,13 @@ const resources = {
         privacy: "Nothing leaves your phone unless you ask.",
         continue: "Continue",
       },
+      reminders: {
+        pickTime: "When would you like the daily reminder?",
+        confirm: "Save",
+        notificationTitle: "HearO",
+        notificationBody: "A quiet walk is ready when you are.",
+        enableInSettings: "Enable in Settings",
+      },
       setup: {
         sceneQuestion: "Where would you\nlike to walk?",
         soundsQuestion: "Which sounds are\nyou ready to hear?",
@@ -90,6 +97,13 @@ const resources = {
         notifsAllow: "אפשר",
         privacy: "שום דבר לא עוזב את הטלפון שלך אלא אם תבקש.",
         continue: "המשך",
+      },
+      reminders: {
+        pickTime: "מתי תרצה את התזכורת היומית?",
+        confirm: "שמור",
+        notificationTitle: "HearO",
+        notificationBody: "הליכה שקטה מחכה לך כשתהיה מוכן.",
+        enableInSettings: "הפעל בהגדרות",
       },
       setup: {
         sceneQuestion: "איפה תרצה\nללכת?",

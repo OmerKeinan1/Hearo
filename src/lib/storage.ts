@@ -11,6 +11,7 @@ const PREFIX = "hearo:";
 const KEYS = {
   displayName: `${PREFIX}displayName`,
   displayNameResolved: `${PREFIX}displayNameResolved`,
+  reminderSchedule: `${PREFIX}reminderSchedule`,
 } as const;
 
 /** A name we've resolved (or explicitly determined we can't resolve) for the
@@ -32,4 +33,27 @@ export async function setDisplayName(name: StoredDisplayName): Promise<void> {
     await AsyncStorage.setItem(KEYS.displayName, name);
   }
   await AsyncStorage.setItem(KEYS.displayNameResolved, "true");
+}
+
+/** Daily reminder schedule. `null` means reminders are off. */
+export type ReminderSchedule = { hour: number; minute: number };
+
+export async function getReminderSchedule(): Promise<ReminderSchedule | null> {
+  const raw = await AsyncStorage.getItem(KEYS.reminderSchedule);
+  if (!raw) return null;
+  try {
+    const parsed = JSON.parse(raw) as ReminderSchedule;
+    if (typeof parsed.hour !== "number" || typeof parsed.minute !== "number") return null;
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+export async function setReminderSchedule(schedule: ReminderSchedule | null): Promise<void> {
+  if (schedule === null) {
+    await AsyncStorage.removeItem(KEYS.reminderSchedule);
+  } else {
+    await AsyncStorage.setItem(KEYS.reminderSchedule, JSON.stringify(schedule));
+  }
 }

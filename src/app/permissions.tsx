@@ -1,14 +1,16 @@
-import { useState } from "react";
-import { Pressable, Text, View } from "react-native";
+import { useEffect, useState } from "react";
+import { Linking, Platform, Pressable, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import DateTimePicker, { DateTimePickerEvent } from "@react-native-community/datetimepicker";
 import { useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
 
 import { CrisisAffordance } from "@/components/CrisisAffordance";
 import { Icon } from "@/components/Icon";
+import * as reminders from "@/lib/reminders";
 import { fonts, tokens } from "@/lib/tokens";
 
-type Status = "idle" | "granted";
+type Status = "idle" | "granted" | "denied";
 
 function PermissionRow({
   title,
@@ -16,14 +18,19 @@ function PermissionRow({
   cta,
   status,
   onPress,
+  deniedHint,
+  onDeniedPress,
 }: {
   title: string;
   why: string;
   cta: string;
   status: Status;
   onPress: () => void;
+  deniedHint?: string;
+  onDeniedPress?: () => void;
 }) {
   const granted = status === "granted";
+  const denied = status === "denied";
   return (
     <View className="mb-12">
       <Text
@@ -70,6 +77,20 @@ function PermissionRow({
           </Text>
         </View>
       </Pressable>
+      {denied && deniedHint ? (
+        <Pressable onPress={onDeniedPress} hitSlop={6} style={{ marginTop: 10 }}>
+          <Text
+            style={{
+              color: tokens.accentSoft,
+              fontFamily: fonts.body,
+              fontSize: 13,
+              textDecorationLine: "underline",
+            }}
+          >
+            {deniedHint}
+          </Text>
+        </Pressable>
+      ) : null}
     </View>
   );
 }
@@ -79,8 +100,51 @@ export default function Permissions() {
   const { t } = useTranslation();
   const [pulseStatus, setPulseStatus] = useState<Status>("idle");
   const [notifsStatus, setNotifsStatus] = useState<Status>("idle");
+  const [showPicker, setShowPicker] = useState(false);
+
+  // On mount, read real notification permission + persisted schedule so the
+  // row reflects actual state, not just session-local UI state.
+  useEffect(() => {
+    void (async () => {
+      const status = await reminders.getPermissionStatus();
+      const schedule = await reminders.getSchedule();
+      if (status === "granted" && schedule) {
+        setNotifsStatus("granted");
+      } else if (status === "denied") {
+        setNotifsStatus("denied");
+      }
+    })();
+  }, []);
 
   const canContinue = pulseStatus === "granted" && notifsStatus === "granted";
+
+  const onNotifsPress = async () => {
+    const status = await reminders.requestPermission();
+    if (status === "granted") {
+      setShowPicker(true); // immediately collect the time
+    } else {
+      setNotifsStatus("denied");
+    }
+  };
+
+  const onTimePicked = async (_event: DateTimePickerEvent, date?: Date) => {
+    // On Android the picker is a modal that closes itself; on iOS it's inline.
+    if (Platform.OS === "android") setShowPicker(false);
+    if (!date) return;
+    await reminders.setSchedule({ hour: date.getHours(), minute: date.getMinutes() });
+    setNotifsStatus("granted");
+    if (Platform.OS === "ios") setShowPicker(false);
+  };
+
+  const openSettings = () => {
+    Linking.openSettings().catch(() => {});
+  };
+
+  const defaultPickerValue = (() => {
+    const d = new Date();
+    d.setHours(18, 0, 0, 0);
+    return d;
+  })();
 
   return (
     <SafeAreaView className="flex-1 bg-bg">
@@ -118,8 +182,31 @@ export default function Permissions() {
           why={t("permissions.notifsWhy")}
           cta={t("permissions.notifsAllow")}
           status={notifsStatus}
-          onPress={() => setNotifsStatus("granted")}
+          onPress={onNotifsPress}
+          deniedHint={t("reminders.enableInSettings") + " →"}
+          onDeniedPress={openSettings}
         />
+
+        {showPicker ? (
+          <View style={{ marginTop: -16, marginBottom: 12 }}>
+            <Text
+              style={{
+                color: tokens.textMute,
+                fontFamily: fonts.body,
+                fontSize: 13,
+                marginBottom: 8,
+              }}
+            >
+              {t("reminders.pickTime")}
+            </Text>
+            <DateTimePicker
+              mode="time"
+              value={defaultPickerValue}
+              onChange={onTimePicked}
+              display={Platform.OS === "ios" ? "spinner" : "default"}
+            />
+          </View>
+        ) : null}
 
         <View className="flex-1" />
 
