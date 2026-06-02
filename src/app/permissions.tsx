@@ -7,6 +7,7 @@ import { useTranslation } from "react-i18next";
 
 import { CrisisAffordance } from "@/components/CrisisAffordance";
 import { Icon } from "@/components/Icon";
+import * as healthKit from "@/lib/healthKit";
 import * as reminders from "@/lib/reminders";
 import { fonts, tokens } from "@/lib/tokens";
 
@@ -103,7 +104,8 @@ export default function Permissions() {
   const [showPicker, setShowPicker] = useState(false);
 
   // On mount, read real notification permission + persisted schedule so the
-  // row reflects actual state, not just session-local UI state.
+  // row reflects actual state, not just session-local UI state. We also probe
+  // HealthKit for an existing authorization (web/Android return undetermined).
   useEffect(() => {
     void (async () => {
       const status = await reminders.getPermissionStatus();
@@ -113,10 +115,17 @@ export default function Permissions() {
       } else if (status === "denied") {
         setNotifsStatus("denied");
       }
+      const hkStatus = await healthKit.getAuthorizationStatus();
+      if (hkStatus === "granted") setPulseStatus("granted");
     })();
   }, []);
 
   const canContinue = pulseStatus === "granted" && notifsStatus === "granted";
+
+  const onPulsePress = async () => {
+    const status = await healthKit.requestAuthorization();
+    setPulseStatus(status === "granted" ? "granted" : "denied");
+  };
 
   const onNotifsPress = async () => {
     const status = await reminders.requestPermission();
@@ -174,7 +183,9 @@ export default function Permissions() {
           why={t("permissions.pulseWhy")}
           cta={t("permissions.pulseAllow")}
           status={pulseStatus}
-          onPress={() => setPulseStatus("granted")}
+          onPress={onPulsePress}
+          deniedHint={t("permissions.pulseDeniedHint")}
+          onDeniedPress={openSettings}
         />
 
         <PermissionRow

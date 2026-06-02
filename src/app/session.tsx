@@ -59,7 +59,37 @@ export default function Session() {
   const pausedRef = useRef(false);
 
   const pulse = usePulse({ active: !isCrisisOpen, phase: pulsePhase });
-  const slow = pulsePhase === "peak" || pulsePhase === "settling";
+
+  // Auto-soften decision. When real pulse is available we drive it from the
+  // body via a 105 in / 90 out hysteresis (2 consecutive samples to enter
+  // slow, 3 to exit) — see openspec/changes/wire-healthkit-pulse/design.md.
+  // When no real pulse is available, we fall back to the script's pulsePhase.
+  const SLOW_IN_BPM = 105;
+  const SLOW_OUT_BPM = 90;
+  const SLOW_IN_CONSEC = 2;
+  const SLOW_OUT_CONSEC = 3;
+  const [realSlow, setRealSlow] = useState(false);
+  const slowInCount = useRef(0);
+  const slowOutCount = useRef(0);
+  useEffect(() => {
+    if (pulse.source !== "real") return;
+    if (pulse.value >= SLOW_IN_BPM) {
+      slowOutCount.current = 0;
+      slowInCount.current += 1;
+      if (slowInCount.current >= SLOW_IN_CONSEC && !realSlow) setRealSlow(true);
+    } else if (pulse.value <= SLOW_OUT_BPM) {
+      slowInCount.current = 0;
+      slowOutCount.current += 1;
+      if (slowOutCount.current >= SLOW_OUT_CONSEC && realSlow) setRealSlow(false);
+    } else {
+      // In the hysteresis band: reset both counters so we require fresh
+      // consecutive samples to flip again.
+      slowInCount.current = 0;
+      slowOutCount.current = 0;
+    }
+  }, [pulse.value, pulse.source, realSlow]);
+  const scriptSlow = pulsePhase === "peak" || pulsePhase === "settling";
+  const slow = pulse.source === "real" ? realSlow : scriptSlow;
 
   // Trigger audio: pick one random variation of the user's first consented
   // sound on mount and stick with it for this session. Empty consent list →
@@ -191,7 +221,7 @@ export default function Session() {
           </View>
 
           <View className="flex-row justify-between items-center pt-4 pb-6">
-            <PulseTicker value={pulse} />
+            <PulseTicker value={pulse.value} source={pulse.source} />
             <Pressable hitSlop={12} onPress={() => router.push("/after")}>
               <Text
                 style={{

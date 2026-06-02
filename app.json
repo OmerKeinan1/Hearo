@@ -16,7 +16,12 @@
     "ios": {
       "icon": "./assets/expo.icon",
       "infoPlist": {
-        "NSContactsUsageDescription": "We use this so you can quickly call someone you trust during a crisis moment. Your contacts stay on your device — we don't upload them."
+        "NSContactsUsageDescription": "We use this so you can quickly call someone you trust during a crisis moment. Your contacts stay on your device — we don't upload them.",
+        "NSHealthShareUsageDescription": "We read your heart rate from Apple Health so the app can soften the soundscape when your body needs it. Nothing about your heart rate leaves your device."
+      },
+      "entitlements": {
+        "com.apple.developer.healthkit": true,
+        "com.apple.developer.healthkit.access": []
       }
     },
     "android": {
@@ -64,6 +69,12 @@
         "expo-contacts",
         {
           "contactsPermission": "We use this so you can quickly call someone you trust during a crisis moment. Your contacts stay on your device — we don't upload them."
+        }
+      ],
+      [
+        "react-native-health",
+        {
+          "healthSharePermission": "We read your heart rate from Apple Health so the app can soften the soundscape when your body needs it. Nothing about your heart rate leaves your device."
         }
       ]
     ],

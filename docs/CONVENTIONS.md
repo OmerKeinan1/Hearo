@@ -202,6 +202,21 @@ Rules:
 - [ ] User-meaningful actions wired through `useAnalytics()`
 - [ ] Hebrew strings present for every English string
 
+## 13a. When you need a dev build
+
+Some native modules cannot run in Expo Go. They require entitlements, native pods, or both, and only show up in a custom development build:
+
+- **`react-native-health`** (HealthKit) — needs the HealthKit entitlement + a paired Apple Watch to read real samples. Expo Go can't grant entitlements.
+- Anything else that adds a config-plugin which mutates `Info.plist`, the entitlements file, or the Podfile.
+
+Cut a dev build with:
+
+```bash
+eas build --profile development --platform ios
+```
+
+Then install the resulting `.ipa` on a device through TestFlight or the Expo orbit "install on device" flow. The same JS bundle that runs in Expo Go runs on the dev build — only the native bits differ. Day-to-day work that doesn't touch HealthKit continues in Expo Go; cut a fresh dev build only when the native config changes.
+
 ## 14. Current state vs. aspiration
 
 The conventions above are the target. As of the last commit, HearO is partly there:
