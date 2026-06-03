@@ -33,13 +33,13 @@
 
 ## 6. Session state machine
 
-- [ ] 6.1 Rewrite `src/app/session.tsx`: implement `useReducer`-based five-state machine (`LOADING | DISCLAIMER | AMBIENT_FADE_IN | ADAPTIVE_LOOP | WIND_DOWN | POST_SESSION`)
-- [ ] 6.2 `LOADING` state: run `asset-cache.ts` check/download; show loading indicator; transition to `DISCLAIMER` on ready
-- [ ] 6.3 `DISCLAIMER` state: play voice clip 1 via `useAudioEngine`; begin ambient fade-in behind it; transition to `AMBIENT_FADE_IN` when clip ends
-- [ ] 6.4 `AMBIENT_FADE_IN` state: run `usePulseMonitor` baseline measurement for ~2 min; transition to `ADAPTIVE_LOOP` when baseline is established
-- [ ] 6.5 `ADAPTIVE_LOOP` state: start trigger ramp; connect `PulseSpiked`/`PulseNormalized` events to `useAudioEngine`; play `MID_SESSION` clip at 50% elapsed
-- [ ] 6.6 `WIND_DOWN` state: fade all layers to zero; play voice clip 3; transition to `POST_SESSION` when clip ends
-- [ ] 6.7 Connect `IntensitySlider` ceiling value to `useAudioEngine.setTriggerCeiling()` — slider remains visible across all active states
+- [x] 6.1 Rewrite `src/app/session.tsx`: implement `useReducer`-based five-state machine (`LOADING | DISCLAIMER | AMBIENT_FADE_IN | ADAPTIVE_LOOP | WIND_DOWN | POST_SESSION`)
+- [x] 6.2 `LOADING` state: run `asset-cache.ts` check/download; show loading indicator; transition to `DISCLAIMER` on ready
+- [x] 6.3 `DISCLAIMER` state: play voice clip 1 via `useAudioEngine`; begin ambient fade-in behind it; transition to `AMBIENT_FADE_IN` when clip ends
+- [x] 6.4 `AMBIENT_FADE_IN` state: run `usePulseMonitor` baseline measurement for ~2 min; transition to `ADAPTIVE_LOOP` when baseline is established
+- [x] 6.5 `ADAPTIVE_LOOP` state: start trigger ramp; connect `PulseSpiked`/`PulseNormalized` events to `useAudioEngine`; play `MID_SESSION` clip at 50% elapsed
+- [x] 6.6 `WIND_DOWN` state: fade all layers to zero; play voice clip 3; transition to `POST_SESSION` when clip ends
+- [x] 6.7 Connect `IntensitySlider` ceiling value to `useAudioEngine.setTriggerCeiling()` — slider remains visible across all active states
 
 ## 7. Watch disconnect and manual mode
 
