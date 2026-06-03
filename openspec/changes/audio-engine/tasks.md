@@ -58,8 +58,8 @@
 
 ## 9. DDD and OpenSpec alignment
 
-- [ ] 9.1 Update `docs/ddd/2-exposure-session.md`: replace three-phase model with five-state machine; close the "breathing/calming is time-scripted" gap note
-- [ ] 9.2 Update `docs/ddd/4-pulse-monitoring.md`: document real `PulseSpiked`/`PulseNormalized` event seam; document per-session personalized baseline replacing fixed 105 bpm
+- [x] 9.1 Update `docs/ddd/2-exposure-session.md`: replace three-phase model with five-state machine; close the "breathing/calming is time-scripted" gap note
+- [x] 9.2 Update `docs/ddd/4-pulse-monitoring.md`: document real `PulseSpiked`/`PulseNormalized` event seam; document per-session personalized baseline replacing fixed 105 bpm
 
 ## 10. Verification
 
