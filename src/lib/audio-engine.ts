@@ -21,26 +21,41 @@ import {
   GainNode,
 } from 'react-native-audio-api';
 
-// dB → linear gain conversion.
-// exponentialRampToValueAtTime cannot start from 0, so we treat
-// SILENCE_GAIN as the practical floor (≈ −60 dB, inaudible).
+// Linear gain for practical silence (≈ −60 dB, inaudible).
+// exponentialRampToValueAtTime cannot start from exactly 0.
 const SILENCE_GAIN = 0.001;
 
-function dBToGain(dB: number): number {
+export function dBToGain(dB: number): number {
   return Math.pow(10, dB / 20);
 }
 
-// Build a Float32Array of N values that follow a perceptually even (linear-dB)
-// ramp from SILENCE_GAIN to ceilingGain.
-function buildLogCurve(ceilingGain: number, steps: number): Float32Array {
-  const ceilingDB = 20 * Math.log10(ceilingGain);
-  const silenceDB = 20 * Math.log10(SILENCE_GAIN);
+// Build a perceptually even (linear-dB) ramp from fromGain to toGain.
+// Returned Float32Array can be passed to setValueCurveAtTime.
+function buildLogCurve(fromGain: number, toGain: number, steps: number): Float32Array {
+  const fromDB = 20 * Math.log10(Math.max(fromGain, SILENCE_GAIN));
+  const toDB = 20 * Math.log10(Math.max(toGain, SILENCE_GAIN));
   const arr = new Float32Array(steps);
   for (let i = 0; i < steps; i++) {
-    const db = silenceDB + ((ceilingDB - silenceDB) * i) / (steps - 1);
-    arr[i] = dBToGain(db);
+    const db = fromDB + ((toDB - fromDB) * i) / (steps - 1);
+    arr[i] = Math.pow(10, db / 20);
   }
   return arr;
+}
+
+// Cancel any scheduled gain automation and freeze at the current instantaneous
+// value. cancelScheduledValues alone does NOT stop a mid-flight curve; we need
+// cancelAndHoldAtTime (or the setValueAtTime workaround if unavailable).
+function freezeGain(gain: GainNode['gain'], ctx: AudioContext): void {
+  const now = ctx.currentTime;
+  const current = gain.value;
+  gain.cancelScheduledValues(now);
+  // cancelAndHoldAtTime freezes a mid-flight curve at its current value.
+  // Fall back to setValueAtTime if the method is absent (partial implementations).
+  if (typeof (gain as any).cancelAndHoldAtTime === 'function') {
+    (gain as any).cancelAndHoldAtTime(now);
+  } else {
+    gain.setValueAtTime(current, now);
+  }
 }
 
 export interface TriggerRampOptions {
@@ -65,15 +80,14 @@ export class AudioEngine {
   private triggerBuffer: AudioBuffer | null = null;
   private voiceBuffers: AudioBuffer[] = [];
 
-  // Active source nodes.
+  // Active looping source nodes.
   private ambientSource: AudioBufferSourceNode | null = null;
   private triggerSource: AudioBufferSourceNode | null = null;
 
-  // Ramp tracking — needed to resume at pre-spike level.
+  // Ramp tracking.
   private _ceilingGain = 0;
   private _rampDuration = 0;
-  private _rampStartTime = 0;       // ctx.currentTime when ramp began
-  private _rampStartGain = SILENCE_GAIN;
+  private _rampStartTime = 0;
   private _preSpikeGain = SILENCE_GAIN;
   private _isSpiked = false;
   private _graceTimer: ReturnType<typeof setTimeout> | null = null;
@@ -84,11 +98,8 @@ export class AudioEngine {
     this.triggerGain = this.ctx.createGain();
     this.voiceGain = this.ctx.createGain();
 
-    // Ambient is always at unity.
     this.ambientGain.gain.value = 1.0;
-    // Trigger starts silent.
     this.triggerGain.gain.value = SILENCE_GAIN;
-    // Voice at unity.
     this.voiceGain.gain.value = 1.0;
 
     this.ambientGain.connect(this.ctx.destination);
@@ -98,7 +109,6 @@ export class AudioEngine {
 
   // ── Buffer loading ──────────────────────────────────────────────────────
 
-  /** Load all audio buffers. Must be awaited before starting playback. */
   async loadBuffers(
     ambientSource: number | string,
     triggerSource: number | string,
@@ -116,10 +126,9 @@ export class AudioEngine {
 
   // ── Ambient ─────────────────────────────────────────────────────────────
 
-  /** Start ambient loop. Call at AMBIENT_FADE_IN entry. */
   startAmbient(): void {
     if (!this.ambientBuffer) throw new Error('ambient buffer not loaded');
-    if (this.ambientSource) return; // already running
+    if (this.ambientSource) return;
 
     const src = this.ctx.createBufferSource();
     src.buffer = this.ambientBuffer;
@@ -133,18 +142,14 @@ export class AudioEngine {
 
   // ── Trigger ramp ─────────────────────────────────────────────────────────
 
-  /** Start the trigger loop and begin the logarithmic gain ramp.
-   *  Call at ADAPTIVE_LOOP entry. */
   startTriggerRamp(opts: TriggerRampOptions): void {
     if (!this.triggerBuffer) throw new Error('trigger buffer not loaded');
 
     this._ceilingGain = opts.ceilingGain;
     this._rampDuration = opts.durationSeconds;
     this._rampStartTime = this.ctx.currentTime;
-    this._rampStartGain = SILENCE_GAIN;
     this._isSpiked = false;
 
-    // Start the looping trigger source at silence.
     const src = this.ctx.createBufferSource();
     src.buffer = this.triggerBuffer;
     src.loop = true;
@@ -157,55 +162,57 @@ export class AudioEngine {
     this._scheduleRamp(SILENCE_GAIN, opts.ceilingGain, opts.durationSeconds);
   }
 
-  /** Schedule a logarithmic gain ramp on TriggerGainNode using setValueCurveAtTime. */
+  // Schedule a perceptual gain ramp. The curve is offset by a tiny amount to
+  // avoid colliding with any preceding setValueAtTime at `now`.
   private _scheduleRamp(
     fromGain: number,
     toGain: number,
     durationSeconds: number
   ): void {
     const now = this.ctx.currentTime;
-    // 200-point curve gives a smooth, 5s-granularity perceptual ramp.
-    const curve = buildLogCurve(toGain, 200);
-    // Override first value to start from current gain (seamless on resume).
-    curve[0] = fromGain;
-    this.triggerGain.gain.cancelScheduledValues(now);
-    this.triggerGain.gain.setValueAtTime(fromGain, now);
-    this.triggerGain.gain.setValueCurveAtTime(curve, now, durationSeconds);
+    // Freeze any in-flight curve before scheduling new one.
+    freezeGain(this.triggerGain.gain, this.ctx);
+    const curve = buildLogCurve(fromGain, toGain, 200);
+    // Small offset avoids same-timestamp conflict between freeze and curve.
+    this.triggerGain.gain.setValueCurveAtTime(curve, now + 0.001, durationSeconds);
   }
 
   // ── Spike / normalize ────────────────────────────────────────────────────
 
-  /** Called by usePulseMonitor when a spike is detected. */
   onSpike(): void {
-    if (this._isSpiked) return;
+    // Guard: only active once trigger is running and not already spiked.
+    if (!this.triggerSource || this._isSpiked) return;
     this._isSpiked = true;
 
-    // Snapshot gain before fading (approximate, since gain is scheduled).
     this._preSpikeGain = this.triggerGain.gain.value;
 
     const now = this.ctx.currentTime;
-    this.triggerGain.gain.cancelScheduledValues(now);
-    this.triggerGain.gain.setValueAtTime(this._preSpikeGain, now);
+    freezeGain(this.triggerGain.gain, this.ctx);
     this.triggerGain.gain.linearRampToValueAtTime(SILENCE_GAIN, now + 2.5);
 
     if (this._graceTimer) clearTimeout(this._graceTimer);
   }
 
-  /** Called by usePulseMonitor when HR returns to ≤90% of baseline. */
   onNormalized(): void {
     if (!this._isSpiked) return;
 
     if (this._graceTimer) clearTimeout(this._graceTimer);
 
-    // 30-second grace period before trigger returns.
     this._graceTimer = setTimeout(() => {
+      // Guard against callback firing after destroy().
+      if (this.ctx.state === 'closed') return;
+
       this._isSpiked = false;
       this._graceTimer = null;
 
-      // Resume ramp from pre-spike gain toward ceiling.
-      // Remaining ramp time = time not yet consumed before the spike.
-      const elapsed = this.ctx.currentTime - this._rampStartTime;
-      const remaining = Math.max(this._rampDuration - elapsed, 10);
+      const remaining = Math.max(
+        this._rampDuration - (this.ctx.currentTime - this._rampStartTime),
+        10
+      );
+
+      // Update tracking so subsequent spikes compute remaining time correctly.
+      this._rampStartTime = this.ctx.currentTime;
+      this._rampDuration = remaining;
 
       this._scheduleRamp(this._preSpikeGain, this._ceilingGain, remaining);
     }, 30_000);
@@ -213,17 +220,21 @@ export class AudioEngine {
 
   // ── Voice overlay ────────────────────────────────────────────────────────
 
-  /** Play a pre-loaded voice clip by index, ducking trigger gain while it plays.
-   *  Returns a promise that resolves when the clip finishes. */
   playVoiceClip(index: number): Promise<void> {
     const buffer = this.voiceBuffers[index];
     if (!buffer) return Promise.resolve();
 
-    const savedTriggerGain = this.triggerGain.gain.value;
     const now = this.ctx.currentTime;
 
+    // If a spike is active, the trigger is already at silence — skip
+    // the save/restore cycle entirely to avoid competing schedules.
+    const shouldRestoreTrigger = !this._isSpiked;
+    const savedTriggerGain = shouldRestoreTrigger
+      ? this.triggerGain.gain.value
+      : SILENCE_GAIN;
+
     // Duck trigger immediately.
-    this.triggerGain.gain.cancelScheduledValues(now);
+    freezeGain(this.triggerGain.gain, this.ctx);
     this.triggerGain.gain.setValueAtTime(0, now);
 
     return new Promise<void>((resolve) => {
@@ -231,16 +242,25 @@ export class AudioEngine {
       src.buffer = buffer;
       src.connect(this.voiceGain);
 
-      src.onended = () => {
-        // Restore trigger gain over 1 second.
-        const t = this.ctx.currentTime;
-        this.triggerGain.gain.setValueAtTime(0, t);
-        this.triggerGain.gain.linearRampToValueAtTime(
-          savedTriggerGain,
-          t + 1.0
-        );
+      let resolved = false;
+
+      const finish = () => {
+        if (resolved) return;
+        resolved = true;
+
+        if (shouldRestoreTrigger) {
+          const t = this.ctx.currentTime;
+          freezeGain(this.triggerGain.gain, this.ctx);
+          this.triggerGain.gain.setValueAtTime(0, t);
+          this.triggerGain.gain.linearRampToValueAtTime(savedTriggerGain, t + 1.0);
+        }
         resolve();
       };
+
+      // onended fires when the source finishes (non-looping).
+      src.onended = finish;
+      // Safety net in case the library does not implement onended reliably.
+      setTimeout(finish, buffer.duration * 1000 + 300);
 
       src.start(0);
     });
@@ -248,8 +268,6 @@ export class AudioEngine {
 
   // ── Ceiling control (intensity slider) ───────────────────────────────────
 
-  /** Update the trigger ceiling from the intensity slider.
-   *  Does not interrupt a spike fade — effective on next normalized ramp. */
   setTriggerCeiling(gain: number): void {
     this._ceilingGain = Math.max(SILENCE_GAIN, gain);
   }
@@ -270,24 +288,24 @@ export class AudioEngine {
 
   // ── Wind-down ────────────────────────────────────────────────────────────
 
-  /** Fade all layers to silence over `durationSeconds`. */
   fadeOutAll(durationSeconds = 3): void {
     const now = this.ctx.currentTime;
     const end = now + durationSeconds;
 
-    this.ambientGain.gain.cancelScheduledValues(now);
-    this.ambientGain.gain.setValueAtTime(this.ambientGain.gain.value, now);
+    freezeGain(this.ambientGain.gain, this.ctx);
     this.ambientGain.gain.linearRampToValueAtTime(0, end);
 
-    this.triggerGain.gain.cancelScheduledValues(now);
-    this.triggerGain.gain.setValueAtTime(this.triggerGain.gain.value, now);
+    freezeGain(this.triggerGain.gain, this.ctx);
     this.triggerGain.gain.linearRampToValueAtTime(0, end);
   }
 
   // ── Cleanup ──────────────────────────────────────────────────────────────
 
   destroy(): void {
-    if (this._graceTimer) clearTimeout(this._graceTimer);
+    if (this._graceTimer) {
+      clearTimeout(this._graceTimer);
+      this._graceTimer = null;
+    }
     try {
       this.ambientSource?.stop();
       this.triggerSource?.stop();
@@ -297,5 +315,3 @@ export class AudioEngine {
     this.ctx.close();
   }
 }
-
-export { dBToGain };
