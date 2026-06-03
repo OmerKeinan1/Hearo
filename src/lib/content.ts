@@ -273,6 +273,12 @@ export type AmbientTrack = {
   sha256?: string;
 };
 
+/** Returns true when a source field is still an unresolved placeholder.
+ *  Guards against passing placeholder strings to AudioEngine.loadBuffers(). */
+export function isPlaceholderSource(source: AudioModule | string): boolean {
+  return typeof source === "string" && source.startsWith("TODO_");
+}
+
 // One basic ambient track is bundled in the app to reduce onboarding friction
 // and provide a fallback when the CDN is unreachable.
 // TODO(asset): replace placeholder with the actual bundled ambient file once
@@ -324,6 +330,7 @@ const VOICE_CLIPS: VoiceClip[] = [
       en: "Halfway check-in",
       he: "מחצית הסשן",
     },
+    // TODO(asset): require("@/assets/sounds/voice/mid-session.mp3") or CDN URI
     source: "TODO_REPLACE_WITH_MID_SESSION_ASSET",
   },
   {
@@ -332,6 +339,7 @@ const VOICE_CLIPS: VoiceClip[] = [
       en: "Session close",
       he: "סיום הסשן",
     },
+    // TODO(asset): require("@/assets/sounds/voice/wind-down.mp3") or CDN URI
     source: "TODO_REPLACE_WITH_WIND_DOWN_ASSET",
   },
 ];

@@ -77,12 +77,28 @@ async function downloadAsset(
 ): Promise<void> {
   const result = await FileSystem.downloadAsync(entry.url, dest);
   if (result.status !== 200) {
+    // Remove partial file so the next attempt retries from scratch.
+    await FileSystem.deleteAsync(dest, { idempotent: true });
     throw new Error(
       `Failed to download ${entry.key}: HTTP ${result.status}`
     );
   }
-  await writeSidecar(dest, entry.sha256);
+  try {
+    await writeSidecar(dest, entry.sha256);
+  } catch (e) {
+    // Sidecar write failed (e.g. storage full). Delete the asset file so the
+    // next session run does not see a "file exists, no sidecar" state and
+    // attempt a perpetual re-download of a perfectly good cached file.
+    await FileSystem.deleteAsync(dest, { idempotent: true });
+    throw e;
+  }
 }
+
+// Note on integrity: the sidecar stores the hash from the CDN manifest, not
+// a hash computed from the downloaded bytes. This detects stale cached files
+// and interrupted downloads (no sidecar = stale), but does NOT verify that
+// the CDN served byte-perfect content. expo-file-system has no native SHA-256
+// API; a future improvement would be to hash the downloaded file in a Worklet.
 
 // ── Public API ───────────────────────────────────────────────────────────
 
@@ -102,6 +118,10 @@ export async function ensureAssets(
   const localUris: Record<string, string> = {};
   let downloaded = 0;
 
+  // All downloads run in parallel. This is fine for demo-sized manifests
+  // (≤10 files). When the full asset set grows, add a concurrency limiter
+  // (e.g. p-limit with 3-4) to avoid CDN per-IP rate limits and to
+  // prevent a single failure from short-circuiting all in-flight downloads.
   await Promise.all(
     manifest.map(async (entry) => {
       const dest = localPath(entry);
