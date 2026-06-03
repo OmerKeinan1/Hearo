@@ -13,7 +13,9 @@
 // TODO(supabase): manifest URL will come from the content provisioning seam
 // (content.ts → Supabase). Hard-coded placeholder below for the demo.
 
-import * as FileSystem from 'expo-file-system';
+// expo-file-system v56 ships a new OOP API as the default export;
+// the legacy procedural API (cacheDirectory, downloadAsync, etc.) lives here.
+import * as FileSystem from 'expo-file-system/legacy';
 
 // ── Types ────────────────────────────────────────────────────────────────
 

@@ -263,7 +263,7 @@ export class AudioEngine {
       };
 
       // onended fires when the source finishes (non-looping).
-      src.onended = finish;
+      src.onEnded = finish;
       // Safety net in case the library does not implement onended reliably.
       setTimeout(finish, buffer.duration * 1000 + 300);
 

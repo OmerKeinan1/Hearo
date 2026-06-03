@@ -63,7 +63,7 @@
 
 ## 10. Verification
 
-- [ ] 10.1 Run `npx tsc --noEmit` — zero errors
+- [x] 10.1 Run `npx tsc --noEmit` — zero errors
 - [ ] 10.2 Run `npx expo run:ios` on real device — verify two layers play simultaneously without dropout
 - [ ] 10.3 Verify LOADING state blocks session start until all assets downloaded
 - [ ] 10.4 Verify voice clip ducks trigger and trigger ramps back after clip ends
@@ -72,4 +72,4 @@
 - [ ] 10.7 Test watch disconnect: simulate 8 s BLE gap → banner appears → trigger freezes → on reconnect adaptive resumes
 - [ ] 10.8 Verify post-session form appears after WIND_DOWN and before After screen
 - [ ] 10.9 Verify crisis-sheet pause/resume still works with the new engine
-- [ ] 10.10 Run `npx -y @fission-ai/openspec validate audio-engine`
+- [x] 10.10 Run `npx -y @fission-ai/openspec validate audio-engine`
