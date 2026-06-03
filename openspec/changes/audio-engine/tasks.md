@@ -43,11 +43,11 @@
 
 ## 7. Watch disconnect and manual mode
 
-- [ ] 7.1 Show "No watch detected" message on session start when no watch is paired; distress button visible
-- [ ] 7.2 Show "Watch disconnected" banner when `WatchDisconnected` event fires; dismiss when reconnected
-- [ ] 7.3 Wire distress button in manual mode: trigger fade to 0, start 90 s countdown, restore gain after countdown
-- [ ] 7.4 Add progress indicator showing remaining seconds of the 90 s countdown
-- [ ] 7.5 Re-press resets countdown to 90 s (trigger stays at 0)
+- [x] 7.1 Show "No watch detected" message on session start when no watch is paired; distress button visible
+- [x] 7.2 Show "Watch disconnected" banner when `WatchDisconnected` event fires; dismiss when reconnected
+- [x] 7.3 Wire distress button in manual mode: trigger fade to 0, start 90 s countdown, restore gain after countdown
+- [x] 7.4 Add progress indicator showing remaining seconds of the 90 s countdown
+- [x] 7.5 Re-press resets countdown to 90 s (trigger stays at 0)
 
 ## 8. Post-session feedback
 

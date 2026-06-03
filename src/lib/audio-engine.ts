@@ -109,19 +109,24 @@ export class AudioEngine {
 
   // ── Buffer loading ──────────────────────────────────────────────────────
 
-  async loadBuffers(
+  // Two-phase loading: ambient + voice clips are needed for DISCLAIMER;
+  // the trigger buffer is only needed at ADAPTIVE_LOOP entry.
+  // Separating them avoids passing an empty placeholder as triggerSource.
+
+  async loadAmbientAndVoice(
     ambientSource: number | string,
-    triggerSource: number | string,
     voiceClipSources: (number | string)[]
   ): Promise<void> {
-    const [ambientBuf, triggerBuf, ...voiceBufs] = await Promise.all([
+    const [ambientBuf, ...voiceBufs] = await Promise.all([
       this.ctx.decodeAudioData(ambientSource),
-      this.ctx.decodeAudioData(triggerSource),
       ...voiceClipSources.map((s) => this.ctx.decodeAudioData(s)),
     ]);
     this.ambientBuffer = ambientBuf;
-    this.triggerBuffer = triggerBuf;
     this.voiceBuffers = voiceBufs;
+  }
+
+  async loadTrigger(triggerSource: number | string): Promise<void> {
+    this.triggerBuffer = await this.ctx.decodeAudioData(triggerSource);
   }
 
   // ── Ambient ─────────────────────────────────────────────────────────────

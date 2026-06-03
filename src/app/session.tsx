@@ -16,7 +16,6 @@ import { getScene, getVoiceScript, localize, SceneKey, isPlaceholderSource, getA
 import { dBToGain } from "@/lib/audio-engine";
 import { useCrisisStore } from "@/lib/crisis-store";
 import { fonts, tokens } from "@/lib/tokens";
-import { usePulse, PulsePhase } from "@/lib/pulse";
 import { useAudioEngine } from "@/hooks/useAudioEngine";
 import { usePulseMonitor, SessionState } from "@/hooks/usePulseMonitor";
 import { ensureAssets, AssetManifest } from "@/lib/asset-cache";
@@ -63,9 +62,13 @@ function sessionReducer(state: MachineState, action: Action): MachineState {
   switch (state) {
     case "LOADING":
       if (action.type === "ASSETS_READY") return "DISCLAIMER";
+      // Allow exit during download — audio has not started, skip straight to post-session.
+      if (action.type === "SESSION_END") return "POST_SESSION";
       break;
     case "DISCLAIMER":
       if (action.type === "DISCLAIMER_DONE") return "AMBIENT_FADE_IN";
+      // Allow exit before full audio engagement.
+      if (action.type === "SESSION_END") return "POST_SESSION";
       break;
     case "AMBIENT_FADE_IN":
       if (action.type === "BASELINE_READY") return "ADAPTIVE_LOOP";
@@ -78,7 +81,7 @@ function sessionReducer(state: MachineState, action: Action): MachineState {
       if (action.type === "WIND_DOWN_DONE") return "POST_SESSION";
       break;
     case "POST_SESSION":
-      if (action.type === "FEEDBACK_SUBMITTED") return "POST_SESSION"; // handled in UI
+      // Navigation handled in useEffect; FEEDBACK_SUBMITTED reserved for feedback form.
       break;
   }
   return state;
@@ -222,56 +225,92 @@ export default function Session() {
     })();
   }, [machineState]);
 
-  // ── DISCLAIMER: play voice clip 0, start ambient ──────────────────────
+  // ── DISCLAIMER: load ambient + voice buffers, start ambient, play clip 0 ──
 
   useEffect(() => {
     if (machineState !== "DISCLAIMER") return;
 
-    engine.startAmbient();
-
+    const ambientTrack = getAmbientTrack();
     const voiceClips = getVoiceClips();
     const disclaimerClip = voiceClips[0];
 
-    if (isPlaceholderSource(disclaimerClip.source)) {
-      // No real asset yet — skip voice clip, go straight to AMBIENT_FADE_IN.
+    if (isPlaceholderSource(ambientTrack.source) && isPlaceholderSource(disclaimerClip.source)) {
+      // No real assets yet — skip loading, advance immediately.
       dispatch({ type: "DISCLAIMER_DONE" });
       return;
     }
 
+    const voiceSources = voiceClips
+      .filter((c) => !isPlaceholderSource(c.source))
+      .map((c) => c.source as number | string);
+
     engine
-      .loadBuffers(
-        getAmbientTrack().source as number,
-        // Trigger buffer loaded lazily in ADAPTIVE_LOOP — not needed yet.
-        "" as unknown as number,
-        voiceClips.map((c) => c.source as number)
+      .loadAmbientAndVoice(
+        isPlaceholderSource(ambientTrack.source) ? 0 : (ambientTrack.source as number | string),
+        voiceSources
       )
-      .then(() => engine.playVoiceClip(0))
+      .then(() => {
+        // startAmbient only after buffer is loaded.
+        if (!isPlaceholderSource(ambientTrack.source)) {
+          engine.startAmbient();
+        }
+        if (!isPlaceholderSource(disclaimerClip.source)) {
+          return engine.playVoiceClip(0);
+        }
+      })
       .then(() => dispatch({ type: "DISCLAIMER_DONE" }))
-      .catch(() => dispatch({ type: "DISCLAIMER_DONE" })); // skip on error
+      .catch(() => dispatch({ type: "DISCLAIMER_DONE" }));
   }, [machineState, engine]);
 
-  // ── ADAPTIVE_LOOP: start trigger ramp ─────────────────────────────────
+  // ── ADAPTIVE_LOOP: load trigger buffer, then start ramp ──────────────
 
   useEffect(() => {
     if (machineState !== "ADAPTIVE_LOOP") return;
 
     const sound = consentedSounds[0];
-    if (!sound) return; // rehearsal walk — no trigger
+    if (!sound) {
+      // Rehearsal walk — no trigger. Just start the auto-advance timer.
+      const id = setTimeout(() => {
+        if (machineStateRef.current === "ADAPTIVE_LOOP") dispatch({ type: "SESSION_END" });
+      }, ADAPTIVE_LOOP_MS);
+      return () => clearTimeout(id);
+    }
 
     const ceilingDb = TRIGGER_CEILING_DB[sound] ?? DEFAULT_CEILING_DB;
+    let cancelled = false;
+    let timerId: ReturnType<typeof setTimeout>;
 
-    engine.startTriggerRamp({
-      durationSeconds: ADAPTIVE_LOOP_MS / 1000,
-      ceilingGain: dBToGain(ceilingDb) * ceiling,
-    });
+    // Pick a random variation from the consented sound's audioVariations.
+    // TODO(supabase): sounds / sound_variations table supplies these.
+    const { getSound } = require("@/lib/content");
+    const variations = getSound(sound).audioVariations as number[];
+    const triggerSource = variations[Math.floor(Math.random() * variations.length)];
 
-    // Auto-advance to WIND_DOWN when the loop expires.
-    const id = setTimeout(() => {
-      if (machineStateRef.current === "ADAPTIVE_LOOP") {
-        dispatch({ type: "SESSION_END" });
-      }
-    }, ADAPTIVE_LOOP_MS);
-    return () => clearTimeout(id);
+    engine
+      .loadTrigger(triggerSource)
+      .then(() => {
+        if (cancelled) return;
+        engine.startTriggerRamp({
+          durationSeconds: ADAPTIVE_LOOP_MS / 1000,
+          ceilingGain: dBToGain(ceilingDb) * ceiling,
+        });
+        timerId = setTimeout(() => {
+          if (machineStateRef.current === "ADAPTIVE_LOOP") dispatch({ type: "SESSION_END" });
+        }, ADAPTIVE_LOOP_MS);
+      })
+      .catch(() => {
+        // Trigger failed to load — continue as rehearsal walk.
+        if (!cancelled) {
+          timerId = setTimeout(() => {
+            if (machineStateRef.current === "ADAPTIVE_LOOP") dispatch({ type: "SESSION_END" });
+          }, ADAPTIVE_LOOP_MS);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+      clearTimeout(timerId);
+    };
   }, [machineState, consentedSounds, ceiling, engine]);
 
   // MID_SESSION voice clip at 50% elapsed.
@@ -386,15 +425,8 @@ export default function Session() {
     }, MANUAL_RETURN_MS);
   }, [engine, reportManualDistress]);
 
-  // Re-press resets countdown.
-  const handleDistressPress = useCallback(() => {
-    if (manualCountdown !== null) {
-      // Already counting — reset.
-      handleManualDistress();
-    } else {
-      handleManualDistress();
-    }
-  }, [manualCountdown, handleManualDistress]);
+  // Re-press resets the countdown (handleManualDistress always clears + restarts).
+  const handleDistressPress = handleManualDistress;
 
   // ── Derived display ───────────────────────────────────────────────────
 

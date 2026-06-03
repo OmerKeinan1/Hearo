@@ -2,6 +2,11 @@ import { useEffect, useRef, useCallback } from 'react';
 import { AudioEngine, TriggerRampOptions } from '@/lib/audio-engine';
 
 export interface UseAudioEngineResult {
+  loadAmbientAndVoice: (
+    ambientSource: number | string,
+    voiceClipSources: (number | string)[]
+  ) => Promise<void>;
+  loadTrigger: (triggerSource: number | string) => Promise<void>;
   startAmbient: () => void;
   startTriggerRamp: (opts: TriggerRampOptions) => void;
   onSpike: () => void;
@@ -11,16 +16,9 @@ export interface UseAudioEngineResult {
   pauseAll: () => Promise<void>;
   resumeAll: () => Promise<void>;
   fadeOutAll: (durationSeconds?: number) => void;
-  loadBuffers: (
-    ambientSource: number | string,
-    triggerSource: number | string,
-    voiceClipSources: (number | string)[]
-  ) => Promise<void>;
   currentTriggerGain: () => number;
 }
 
-/** React hook that owns an AudioEngine instance for the lifetime of the
- *  session screen. The engine is created on mount and destroyed on unmount. */
 export function useAudioEngine(): UseAudioEngineResult {
   const engineRef = useRef<AudioEngine | null>(null);
 
@@ -36,19 +34,19 @@ export function useAudioEngine(): UseAudioEngineResult {
     };
   }, []);
 
-  const loadBuffers = useCallback(
-    (
-      ambientSource: number | string,
-      triggerSource: number | string,
-      voiceClipSources: (number | string)[]
-    ) => engineRef.current!.loadBuffers(ambientSource, triggerSource, voiceClipSources),
+  const loadAmbientAndVoice = useCallback(
+    (ambientSource: number | string, voiceClipSources: (number | string)[]) =>
+      engineRef.current!.loadAmbientAndVoice(ambientSource, voiceClipSources),
     []
   );
 
-  const startAmbient = useCallback(
-    () => engineRef.current!.startAmbient(),
+  const loadTrigger = useCallback(
+    (triggerSource: number | string) =>
+      engineRef.current!.loadTrigger(triggerSource),
     []
   );
+
+  const startAmbient = useCallback(() => engineRef.current!.startAmbient(), []);
 
   const startTriggerRamp = useCallback(
     (opts: TriggerRampOptions) => engineRef.current!.startTriggerRamp(opts),
@@ -57,10 +55,7 @@ export function useAudioEngine(): UseAudioEngineResult {
 
   const onSpike = useCallback(() => engineRef.current!.onSpike(), []);
 
-  const onNormalized = useCallback(
-    () => engineRef.current!.onNormalized(),
-    []
-  );
+  const onNormalized = useCallback(() => engineRef.current!.onNormalized(), []);
 
   const playVoiceClip = useCallback(
     (index: number) => engineRef.current!.playVoiceClip(index),
@@ -72,15 +67,9 @@ export function useAudioEngine(): UseAudioEngineResult {
     []
   );
 
-  const pauseAll = useCallback(
-    () => engineRef.current!.pauseAll(),
-    []
-  );
+  const pauseAll = useCallback(() => engineRef.current!.pauseAll(), []);
 
-  const resumeAll = useCallback(
-    () => engineRef.current!.resumeAll(),
-    []
-  );
+  const resumeAll = useCallback(() => engineRef.current!.resumeAll(), []);
 
   const fadeOutAll = useCallback(
     (durationSeconds?: number) => engineRef.current!.fadeOutAll(durationSeconds),
@@ -93,7 +82,8 @@ export function useAudioEngine(): UseAudioEngineResult {
   );
 
   return {
-    loadBuffers,
+    loadAmbientAndVoice,
+    loadTrigger,
     startAmbient,
     startTriggerRamp,
     onSpike,
