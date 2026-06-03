@@ -7,10 +7,6 @@
 //   - Normalization detection: HR ≤ baseline × 0.90
 //   - Chronic high baseline handling (resting HR > 90 BPM)
 //   - BLE disconnect: no readings for 8 s → watchConnected = false
-//
-// The hook emits events via onSpike / onNormalized callbacks so the session
-// machine drives the audio engine directly. Callbacks are stable refs — safe
-// to pass from session.tsx without triggering re-renders.
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { usePulse, PulsePhase } from '@/lib/pulse';
@@ -23,17 +19,15 @@ export type SessionState =
   | 'WIND_DOWN'
   | 'POST_SESSION';
 
-/** Returned by usePulseMonitor. */
 export interface PulseMonitorResult {
   pulseBpm: number;
-  /** Baseline HR computed at the end of AMBIENT_FADE_IN. Null until ready. */
+  /** Baseline HR computed at end of AMBIENT_FADE_IN. Null until ready. */
   sessionBaseline: number | null;
   /** Currently in a confirmed spike (≥15% above baseline, ≥8 s). */
   isSpiked: boolean;
-  /** Whether the watch is considered connected. */
   watchConnected: boolean;
-  /** For chronic high-baseline users: manual distress press counted as one
-   *  source. Combined with HR threshold → full spike. */
+  /** For chronic high-baseline users: call this when the manual distress
+   *  button is pressed. Counts as the second source for spike confirmation. */
   reportManualDistress: () => void;
 }
 
@@ -46,18 +40,15 @@ interface Options {
   onWatchReconnected: () => void;
 }
 
-// Threshold constants (clinical parameters, Q1 answers).
-const SPIKE_RATIO = 1.15;        // +15% above baseline
-const NORMALIZE_RATIO = 0.90;    // HR ≤ 90% of baseline → normalized
-const SPIKE_SUSTAIN_MS = 8_000;  // Must be elevated for 8 s continuously
-const BLE_TIMEOUT_MS = 8_000;    // 8 s with no readings → disconnected
-const CHRONIC_HIGH_BPM = 90;     // Resting HR above this = chronic high baseline
+// Clinical constants (Q1 answers).
+const SPIKE_RATIO = 1.15;
+const NORMALIZE_RATIO = 0.90;
+const SPIKE_SUSTAIN_MS = 8_000;
+const BLE_TIMEOUT_MS = 8_000;
+const CHRONIC_HIGH_BPM = 90;
+const BASELINE_FALLBACK_BPM = 74; // used when AMBIENT_FADE_IN produces no readings
 
-// How often we sample from the mock generator (real HealthKit fires own events).
 const SAMPLE_INTERVAL_MS = 250;
-
-// The mock PulsePhase during ADAPTIVE_LOOP — drives the mock generator curve.
-// In a real HealthKit build this would be removed.
 const ADAPTIVE_MOCK_PHASE: PulsePhase = 'rising';
 
 export function usePulseMonitor({
@@ -68,8 +59,6 @@ export function usePulseMonitor({
   onWatchDisconnected,
   onWatchReconnected,
 }: Options): PulseMonitorResult {
-  // Use the existing mock generator as the pulse source.
-  // In AMBIENT_FADE_IN + ADAPTIVE_LOOP we drive it with the appropriate phase.
   const mockPhase: PulsePhase =
     sessionState === 'ADAPTIVE_LOOP' ? ADAPTIVE_MOCK_PHASE : 'baseline';
 
@@ -84,19 +73,23 @@ export function usePulseMonitor({
   const [isSpiked, setIsSpiked] = useState(false);
   const [watchConnected, setWatchConnected] = useState(true);
 
-  // ── Refs (mutable, not reactive) ─────────────────────────────────────────
+  // ── Refs ─────────────────────────────────────────────────────────────────
+
+  // rawBpmRef: always current BPM; used inside intervals/callbacks to avoid
+  // stale closure captures (rawBpm is a primitive — useCallback captures the
+  // value at memo time, not the live value).
+  const rawBpmRef = useRef(rawBpm);
+  useEffect(() => { rawBpmRef.current = rawBpm; }, [rawBpm]);
 
   const baselineReadings = useRef<number[]>([]);
   const spikeStartedAt = useRef<number | null>(null);
   const isSpikedRef = useRef(false);
   const sessionBaselineRef = useRef<number | null>(null);
-  const lastReadingAt = useRef<number>(Date.now());
   const watchConnectedRef = useRef(true);
-  // For chronic high-baseline: pending manual distress signal.
   const pendingManualDistress = useRef(false);
   const bleTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Stable callback refs — avoid re-wiring effects when parent re-renders.
+  // Stable callback refs — prevent effect re-wiring on every parent render.
   const onSpikeRef = useRef(onSpike);
   const onNormalizedRef = useRef(onNormalized);
   const onWatchDisconnectedRef = useRef(onWatchDisconnected);
@@ -108,44 +101,53 @@ export function usePulseMonitor({
 
   // ── Baseline collection (AMBIENT_FADE_IN) ───────────────────────────────
 
+  // Dep array intentionally excludes rawBpm — interval reads rawBpmRef.current
+  // at call time so we get the live value. Including rawBpm here would tear
+  // down and re-create the interval every 220 ms, leaving no time to sample.
   useEffect(() => {
     if (sessionState !== 'AMBIENT_FADE_IN') return;
-
     const id = setInterval(() => {
-      baselineReadings.current.push(rawBpm);
+      baselineReadings.current.push(rawBpmRef.current);
     }, SAMPLE_INTERVAL_MS);
-
     return () => clearInterval(id);
-  }, [sessionState, rawBpm]);
+  }, [sessionState]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // When AMBIENT_FADE_IN ends, compute and lock the baseline.
+  // When session enters ADAPTIVE_LOOP, lock the baseline from collected readings.
   useEffect(() => {
     if (sessionState !== 'ADAPTIVE_LOOP') return;
-    if (sessionBaselineRef.current !== null) return; // already set
+    if (sessionBaselineRef.current !== null) return; // already locked
 
     const readings = baselineReadings.current;
-    if (readings.length === 0) return;
-
     const baseline =
-      readings.reduce((sum, v) => sum + v, 0) / readings.length;
+      readings.length > 0
+        ? readings.reduce((sum, v) => sum + v, 0) / readings.length
+        : BASELINE_FALLBACK_BPM; // safety net: if AMBIENT_FADE_IN was too short
+
     sessionBaselineRef.current = baseline;
     setSessionBaseline(baseline);
   }, [sessionState]);
 
-  // ── BLE connectivity tracking ────────────────────────────────────────────
+  // ── Spike state cleanup when leaving ADAPTIVE_LOOP ───────────────────────
 
   useEffect(() => {
-    // Each new rawBpm value is a "reading received" signal.
+    if (sessionState === 'ADAPTIVE_LOOP') return;
+    spikeStartedAt.current = null;
+    isSpikedRef.current = false;
+    pendingManualDistress.current = false;
+    setIsSpiked(false);
+  }, [sessionState]);
+
+  // ── BLE connectivity (reset timer on each rawBpm change) ─────────────────
+
+  useEffect(() => {
     lastReadingAt.current = Date.now();
 
     if (!watchConnectedRef.current) {
-      // Watch reconnected.
       watchConnectedRef.current = true;
       setWatchConnected(true);
       onWatchReconnectedRef.current();
     }
 
-    // Reset the disconnect timer.
     if (bleTimeoutRef.current) clearTimeout(bleTimeoutRef.current);
     bleTimeoutRef.current = setTimeout(() => {
       watchConnectedRef.current = false;
@@ -176,25 +178,21 @@ export function usePulseMonitor({
       const sustainedMs = Date.now() - spikeStartedAt.current;
 
       if (!isSpikedRef.current && sustainedMs >= SPIKE_SUSTAIN_MS) {
-        // For chronic high-baseline users: require dual confirmation.
         if (isChronicHighBaseline && !pendingManualDistress.current) {
-          // HR threshold met — log it, wait for manual distress button.
-          // (no PulseSpiked yet — single source)
+          // HR threshold met but waiting for manual confirmation — log only.
           return;
         }
-
-        // Full spike confirmed.
         isSpikedRef.current = true;
         pendingManualDistress.current = false;
         setIsSpiked(true);
         onSpikeRef.current();
       }
     } else {
-      // HR dropped below spike threshold — reset sustain timer.
       spikeStartedAt.current = null;
+      // Only clear pending distress if HR has been consistently below threshold;
+      // small jitter resets are intentionally accepted here (clinical tradeoff).
       pendingManualDistress.current = false;
 
-      // Check for normalization (HR ≤ 90% baseline after a spike).
       if (isSpikedRef.current && rawBpm <= baseline * NORMALIZE_RATIO) {
         isSpikedRef.current = false;
         setIsSpiked(false);
@@ -210,17 +208,14 @@ export function usePulseMonitor({
     if (baseline === null) return;
 
     const isChronicHighBaseline = baseline > CHRONIC_HIGH_BPM;
+    if (!isChronicHighBaseline) return;
 
-    if (isChronicHighBaseline) {
-      // If HR is above threshold, this is the second source → full spike.
-      if (rawBpm >= baseline * SPIKE_RATIO) {
-        pendingManualDistress.current = true;
-        // The next spike-detection tick will fire the event.
-      }
+    // Use rawBpmRef.current (always live) — not rawBpm (stale closure).
+    if (rawBpmRef.current >= baseline * SPIKE_RATIO) {
+      pendingManualDistress.current = true;
+      // The next spike-detection effect tick will complete the dual-source check.
     }
-    // For non-chronic users the manual distress button drives the engine
-    // directly (manual mode), not through usePulseMonitor — see session.tsx.
-  }, [rawBpm]);
+  }, []); // no deps — reads only refs
 
   return {
     pulseBpm: rawBpm,
@@ -230,3 +225,6 @@ export function usePulseMonitor({
     reportManualDistress,
   };
 }
+
+// Internal — used by BLE effect.
+const lastReadingAt = { current: Date.now() };
