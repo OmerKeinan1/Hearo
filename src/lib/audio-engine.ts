@@ -150,6 +150,13 @@ export class AudioEngine {
   startTriggerRamp(opts: TriggerRampOptions): void {
     if (!this.triggerBuffer) throw new Error('trigger buffer not loaded');
 
+    // Idempotency guard: stop any existing trigger source before creating a new one.
+    // Prevents doubled audio if called more than once (e.g. effect dep-array bug).
+    if (this.triggerSource) {
+      try { this.triggerSource.stop(); } catch { /* already stopped */ }
+      this.triggerSource = null;
+    }
+
     this._ceilingGain = opts.ceilingGain;
     this._rampDuration = opts.durationSeconds;
     this._rampStartTime = this.ctx.currentTime;

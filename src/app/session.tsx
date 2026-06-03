@@ -158,7 +158,9 @@ export default function Session() {
     if (manualReturnTimer.current) clearTimeout(manualReturnTimer.current);
     if (manualCountdownInterval.current) clearInterval(manualCountdownInterval.current);
     setManualCountdown(null);
-  }, []);
+    // Resume trigger ramp — engine was stuck in spiked state from the manual distress press.
+    engine.onNormalized();
+  }, [engine]);
 
   const { pulseBpm, sessionBaseline, isSpiked, watchConnected, reportManualDistress } =
     usePulseMonitor({
@@ -314,7 +316,10 @@ export default function Session() {
       cancelled = true;
       clearTimeout(timerId);
     };
-  }, [machineState, consentedSounds, ceiling, engine]);
+  // ceiling intentionally excluded — setTriggerCeiling effect handles live updates.
+  // Including it would restart the ramp (and duplicate the source node) on every slider move.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [machineState, consentedSounds, engine]);
 
   // MID_SESSION voice clip at 50% elapsed.
   const midSessionFiredRef = useRef(false);
