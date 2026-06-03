@@ -1,5 +1,7 @@
 # Handover — audio-engine branch
 
+> **DELETE THIS FILE** at the start of the next session, once you've read it and confirmed the resume point. Its presence signals "work in progress from a previous session." Once the session is underway and tasks are being tracked via tasks.md, this file is stale and should go.
+
 **Branch:** `audio-engine`
 **Date:** 2026-06-03
 **Status:** Implementation in progress — stopped mid-session due to token limit.
