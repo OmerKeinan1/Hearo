@@ -21,10 +21,10 @@
 
 ## 4. Pulse monitoring — real event seam
 
-- [ ] 4.1 Extend `src/lib/pulse.ts`: add `PulseSpiked` / `PulseNormalized` event types and emission logic based on the 15% / 8 s threshold rule
-- [ ] 4.2 Create `src/hooks/usePulseMonitor.ts`: collect HR readings during `AMBIENT_FADE_IN`, compute `sessionBaseline`, detect spikes, return `{ pulseBpm, spiked, normalized, watchConnected }`
-- [ ] 4.3 Add BLE disconnect detection: emit `WatchDisconnected` after 8 s of no HR readings
-- [ ] 4.4 Add chronic high baseline logic: require both HR threshold AND manual distress press for a `PulseSpiked` event when resting HR > 90 BPM
+- [x] 4.1 Extend `src/lib/pulse.ts`: add `PulseSpiked` / `PulseNormalized` event types and emission logic based on the 15% / 8 s threshold rule
+- [x] 4.2 Create `src/hooks/usePulseMonitor.ts`: collect HR readings during `AMBIENT_FADE_IN`, compute `sessionBaseline`, detect spikes, return `{ pulseBpm, spiked, normalized, watchConnected }`
+- [x] 4.3 Add BLE disconnect detection: emit `WatchDisconnected` after 8 s of no HR readings
+- [x] 4.4 Add chronic high baseline logic: require both HR threshold AND manual distress press for a `PulseSpiked` event when resting HR > 90 BPM
 
 ## 5. Asset cache
 
