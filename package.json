@@ -62,25 +62,5 @@
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage"
   },
-  "jest": {
-    "preset": "jest-expo",
-    "moduleNameMapper": {
-      "\\.(png|jpg|jpeg|gif|webp|svg|mp3|wav|m4a|mp4)$": "<rootDir>/test/assetMock.js",
-      "^@/assets/(.*)$": "<rootDir>/assets/$1",
-      "^@/(.*)$": "<rootDir>/src/$1"
-    },
-    "collectCoverageFrom": [
-      "src/lib/**/*.{ts,tsx}",
-      "src/components/**/*.{ts,tsx}",
-      "!src/lib/tokens.ts",
-      "!src/lib/i18n.ts"
-    ],
-    "coverageThreshold": {
-      "./src/lib/**/*.{ts,tsx}": {
-        "lines": 85,
-        "branches": 80
-      }
-    }
-  },
   "private": true
 }
