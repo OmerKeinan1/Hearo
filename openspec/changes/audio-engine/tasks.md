@@ -28,8 +28,8 @@
 
 ## 5. Asset cache
 
-- [ ] 5.1 Create `src/lib/asset-cache.ts`: fetch CDN manifest, check SHA256 of locally cached files via `expo-file-system`, download missing/stale assets, return ready signal
-- [ ] 5.2 Extend `src/lib/content.ts`: add `AmbientTrack` type, `VoiceClip` type, `getAmbientTrack()` getter, `getVoiceClips()` getter; add `TODO(supabase)` markers for CDN URL fields
+- [x] 5.1 Create `src/lib/asset-cache.ts`: fetch CDN manifest, check SHA256 of locally cached files via `expo-file-system`, download missing/stale assets, return ready signal
+- [x] 5.2 Extend `src/lib/content.ts`: add `AmbientTrack` type, `VoiceClip` type, `getAmbientTrack()` getter, `getVoiceClips()` getter; add `TODO(supabase)` markers for CDN URL fields
 
 ## 6. Session state machine
 

@@ -259,3 +259,84 @@ export function getSound(key: SoundKey): Sound {
 export function getDefaultPreferences(): Preferences {
   return { scene: "park", sounds: ["motorcycle"] };
 }
+
+// ── Ambient tracks ────────────────────────────────────────────────────────
+
+/** A looping ambient soundscape asset. */
+export type AmbientTrack = {
+  key: string;
+  label: LocalizedText;
+  // TODO(supabase): `ambient_tracks` table — key, labels, cdn_url, sha256.
+  // AudioModule (require()) for the bundled fallback; string CDN URI otherwise.
+  source: AudioModule | string;
+  /** SHA-256 of the CDN file — used by asset-cache for freshness checks. */
+  sha256?: string;
+};
+
+// One basic ambient track is bundled in the app to reduce onboarding friction
+// and provide a fallback when the CDN is unreachable.
+// TODO(asset): replace placeholder with the actual bundled ambient file once
+// produced by the audio team.
+const BUNDLED_AMBIENT: AmbientTrack = {
+  key: "ambient/default",
+  label: { en: "Calm ambience", he: "סביבה רגועה" },
+  // TODO(asset): require("@/assets/sounds/ambient/default.m4a")
+  source: "TODO_REPLACE_WITH_BUNDLED_ASSET",
+};
+
+// TODO(supabase): `supabase.from('ambient_tracks').select('*')`
+export function getAmbientTrack(): AmbientTrack {
+  return BUNDLED_AMBIENT;
+}
+
+// ── Voice clips ───────────────────────────────────────────────────────────
+
+/** A pre-recorded voice clip played at specific session moments. */
+export type VoiceClip = {
+  key: "disclaimer" | "mid-session" | "wind-down";
+  label: LocalizedText;
+  // TODO(supabase): `voice_clips` table — key, lang, cdn_url, sha256, duration_ms.
+  // Source can be a bundled AudioModule or a CDN URI string (MP3/MP4).
+  source: AudioModule | string;
+  sha256?: string;
+  durationMs?: number;
+};
+
+export type VoiceClipKey = VoiceClip["key"];
+
+// Voice clip order matches the playVoiceClip(index) contract in AudioEngine:
+//   index 0 = DISCLAIMER, index 1 = MID_SESSION, index 2 = WIND_DOWN
+// TODO(asset): replace placeholder sources with actual recordings once
+// approved by the clinical team (Dudi Efrati).
+const VOICE_CLIPS: VoiceClip[] = [
+  {
+    key: "disclaimer",
+    label: {
+      en: "Session intro",
+      he: "פתיח הסשן",
+    },
+    // TODO(asset): require("@/assets/sounds/voice/disclaimer.mp3") or CDN URI
+    source: "TODO_REPLACE_WITH_DISCLAIMER_ASSET",
+  },
+  {
+    key: "mid-session",
+    label: {
+      en: "Halfway check-in",
+      he: "מחצית הסשן",
+    },
+    source: "TODO_REPLACE_WITH_MID_SESSION_ASSET",
+  },
+  {
+    key: "wind-down",
+    label: {
+      en: "Session close",
+      he: "סיום הסשן",
+    },
+    source: "TODO_REPLACE_WITH_WIND_DOWN_ASSET",
+  },
+];
+
+// TODO(supabase): `supabase.from('voice_clips').select('*').order('sort_order')`
+export function getVoiceClips(): VoiceClip[] {
+  return VOICE_CLIPS;
+}
