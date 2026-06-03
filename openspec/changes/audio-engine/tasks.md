@@ -51,10 +51,10 @@
 
 ## 8. Post-session feedback
 
-- [ ] 8.1 Create `src/components/features/post-session/` feature folder with `index.ts`
-- [ ] 8.2 Create feedback screen: 4 questions (difficulty 1-5, trigger impact, mood change, open optional text)
-- [ ] 8.3 Wire `POST_SESSION` state → feedback screen → After screen
-- [ ] 8.4 Add `TODO(supabase)` marker for feedback data persistence (schema pending)
+- [x] 8.1 Create `src/components/features/post-session/` feature folder with `index.ts`
+- [x] 8.2 Create feedback screen: 4 questions (difficulty 1-5, trigger impact, mood change, open optional text)
+- [x] 8.3 Wire `POST_SESSION` state → feedback screen → After screen
+- [x] 8.4 Add `TODO(supabase)` marker for feedback data persistence (schema pending)
 
 ## 9. DDD and OpenSpec alignment
 

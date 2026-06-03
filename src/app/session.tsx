@@ -19,6 +19,7 @@ import { fonts, tokens } from "@/lib/tokens";
 import { useAudioEngine } from "@/hooks/useAudioEngine";
 import { usePulseMonitor, SessionState } from "@/hooks/usePulseMonitor";
 import { ensureAssets, AssetManifest } from "@/lib/asset-cache";
+import { PostSessionFeedback, FeedbackAnswers } from "@/components/features/post-session";
 
 // ── Constants ────────────────────────────────────────────────────────────
 
@@ -119,6 +120,8 @@ export default function Session() {
 
   const [elapsed, setElapsed] = useState(0);
   const [ceiling, setCeiling] = useState(0.65);
+  // POST_SESSION: show feedback form before routing to After.
+  const [showingFeedback, setShowingFeedback] = useState(false);
   const [loadProgress, setLoadProgress] = useState(0);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [watchBanner, setWatchBanner] = useState<"no-watch" | "disconnected" | null>(null);
@@ -350,15 +353,27 @@ export default function Session() {
     }, 3200); // after fade completes
   }, [machineState, engine]);
 
-  // ── POST_SESSION → After screen ────────────────────────────────────────
+  // ── POST_SESSION → feedback form → After screen ────────────────────────
 
   useEffect(() => {
     if (machineState === "POST_SESSION") {
-      // TODO(post-session): show feedback form before routing.
-      // For now route immediately; the feedback screen will be inserted here.
-      router.push("/after");
+      setShowingFeedback(true);
     }
-  }, [machineState, router]);
+  }, [machineState]);
+
+  const handleFeedbackSubmit = useCallback(
+    (_answers: FeedbackAnswers) => {
+      // TODO(supabase): persist answers to sessions feedback table.
+      setShowingFeedback(false);
+      router.push("/after");
+    },
+    [router]
+  );
+
+  const handleFeedbackSkip = useCallback(() => {
+    setShowingFeedback(false);
+    router.push("/after");
+  }, [router]);
 
   // ── Intensity slider → engine ceiling ─────────────────────────────────
 
@@ -447,6 +462,17 @@ export default function Session() {
 
   // ── Pulse mock phase (drives mock generator arc) ──────────────────────
   // usePulseMonitor handles this internally, so we just display pulseBpm.
+
+  // ── POST_SESSION: feedback form overlay ──────────────────────────────
+
+  if (showingFeedback) {
+    return (
+      <PostSessionFeedback
+        onSubmit={handleFeedbackSubmit}
+        onSkip={handleFeedbackSkip}
+      />
+    );
+  }
 
   // ── LOADING screen ────────────────────────────────────────────────────
 
