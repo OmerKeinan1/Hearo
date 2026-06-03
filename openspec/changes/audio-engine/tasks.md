@@ -1,8 +1,8 @@
 ## 1. Branch and library swap
 
-- [ ] 1.1 Install `react-native-audio-api` (Software Mansion) and remove `expo-audio` from `package.json`
-- [ ] 1.2 Update `docs/CONVENTIONS.md` audio library row from `expo-audio` to `react-native-audio-api`
-- [ ] 1.3 Update `AGENTS.md` to note that a dev build is required — Expo Go is incompatible after this change
+- [x] 1.1 Install `react-native-audio-api` (Software Mansion) and remove `expo-audio` from `package.json`
+- [x] 1.2 Update `docs/CONVENTIONS.md` audio library row from `expo-audio` to `react-native-audio-api`
+- [x] 1.3 Update `AGENTS.md` to note that a dev build is required — Expo Go is incompatible after this change
 
 ## 2. Audio engine core
 
