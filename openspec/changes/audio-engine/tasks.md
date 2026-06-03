@@ -6,18 +6,18 @@
 
 ## 2. Audio engine core
 
-- [ ] 2.1 Create `src/lib/audio-engine.ts`: initialize `AudioContext`, create `AmbientGainNode` (locked at 1.0), `TriggerGainNode` (starts at 0), `VoiceGainNode` (1.0), connect all to `destination`
-- [ ] 2.2 Implement ambient looping: `loop = true` with `loopStart`/`loopEnd` set to avoid AAC encoder-delay artifacts
-- [ ] 2.3 Implement logarithmic trigger ramp: schedule gain steps in 250 ms increments using `Math.pow(10, dB/20)` mapping
-- [ ] 2.4 Implement spike response: `TriggerGainNode.gain.linearRampToValueAtTime(0, ctx.currentTime + 2.5)` on `PulseSpiked`
-- [ ] 2.5 Implement recovery resume: on `PulseNormalized` + 30 s grace, restore gain to pre-spike level
-- [ ] 2.6 Implement voice ducking: set `TriggerGainNode.gain` to 0 on voice clip start; `linearRampToValueAtTime(prevGain, ctx.currentTime + 1)` on end
-- [ ] 2.7 Implement pause/resume: stop all sources on crisis-sheet open, resume from saved positions on close
+- [x] 2.1 Create `src/lib/audio-engine.ts`: initialize `AudioContext`, create `AmbientGainNode` (locked at 1.0), `TriggerGainNode` (starts at 0), `VoiceGainNode` (1.0), connect all to `destination`
+- [x] 2.2 Implement ambient looping: `loop = true` with `loopStart`/`loopEnd` set to avoid AAC encoder-delay artifacts
+- [x] 2.3 Implement logarithmic trigger ramp: schedule gain steps in 250 ms increments using `Math.pow(10, dB/20)` mapping
+- [x] 2.4 Implement spike response: `TriggerGainNode.gain.linearRampToValueAtTime(0, ctx.currentTime + 2.5)` on `PulseSpiked`
+- [x] 2.5 Implement recovery resume: on `PulseNormalized` + 30 s grace, restore gain to pre-spike level
+- [x] 2.6 Implement voice ducking: set `TriggerGainNode.gain` to 0 on voice clip start; `linearRampToValueAtTime(prevGain, ctx.currentTime + 1)` on end
+- [x] 2.7 Implement pause/resume: stop all sources on crisis-sheet open, resume from saved positions on close
 
 ## 3. Audio engine React hook
 
-- [ ] 3.1 Create `src/hooks/useAudioEngine.ts` wrapping `audio-engine.ts`; expose `startSession`, `pauseAll`, `resumeAll`, `setTriggerCeiling(gain)`, `playVoiceClip(source)`, `currentTriggerGain`
-- [ ] 3.2 Ensure hook cleans up `AudioContext` on unmount
+- [x] 3.1 Create `src/hooks/useAudioEngine.ts` wrapping `audio-engine.ts`; expose `startSession`, `pauseAll`, `resumeAll`, `setTriggerCeiling(gain)`, `playVoiceClip(source)`, `currentTriggerGain`
+- [x] 3.2 Ensure hook cleans up `AudioContext` on unmount
 
 ## 4. Pulse monitoring — real event seam
 
