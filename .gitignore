@@ -1,6 +1,9 @@
 # macOS
 .DS_Store
 
+# Windows device artifact (shows up when commands redirect to nul on Windows)
+nul
+
 # Logs
 *.log
 npm-debug.*
