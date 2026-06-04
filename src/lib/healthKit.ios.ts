@@ -19,6 +19,10 @@ import AppleHealthKit, {
 } from "react-native-health";
 
 import {
+  getHealthKitGranted,
+  setHealthKitGranted,
+} from "./storage";
+import type {
   AuthorizationStatus,
   HeartRateSample,
   HeartRateUnsubscribe,
@@ -34,6 +38,10 @@ const READ_PERMISSIONS: HealthKitPermissions = {
 const POLL_MS = 2000;
 
 let initialized = false;
+// In-flight init promise — concurrent callers (e.g. a double-tapped Allow
+// button) share this single promise instead of racing two initHealthKit
+// calls. Cleared after settle so a later request can re-try.
+let initPromise: Promise<boolean> | null = null;
 
 function callbackToPromise<T>(
   fn: (cb: (err: string | null, result: T) => void) => void,
@@ -48,18 +56,27 @@ function callbackToPromise<T>(
 
 async function ensureInit(): Promise<boolean> {
   if (initialized) return true;
-  try {
-    await new Promise<void>((resolve, reject) => {
-      AppleHealthKit.initHealthKit(READ_PERMISSIONS, (err) => {
-        if (err) reject(new Error(err));
-        else resolve();
+  if (initPromise) return initPromise;
+  initPromise = (async () => {
+    try {
+      await new Promise<void>((resolve, reject) => {
+        AppleHealthKit.initHealthKit(READ_PERMISSIONS, (err) => {
+          if (err) reject(new Error(err));
+          else resolve();
+        });
       });
-    });
-    initialized = true;
-    return true;
-  } catch {
-    return false;
-  }
+      initialized = true;
+      // Persist so cold-start can answer "granted" without prompting (Apple's
+      // HealthKit read API intentionally won't tell us the user's choice).
+      await setHealthKitGranted(true);
+      return true;
+    } catch {
+      return false;
+    } finally {
+      initPromise = null;
+    }
+  })();
+  return initPromise;
 }
 
 export async function isAvailable(): Promise<boolean> {
@@ -80,7 +97,12 @@ export async function requestAuthorization(): Promise<AuthorizationStatus> {
 }
 
 export async function getAuthorizationStatus(): Promise<AuthorizationStatus> {
-  return initialized ? "granted" : "undetermined";
+  if (initialized) return "granted";
+  // Read the sticky flag rather than calling initHealthKit, because init
+  // triggers the iOS prompt on first run and we don't want the permissions
+  // screen to ambush the user before they tap "Allow".
+  const granted = await getHealthKitGranted();
+  return granted ? "granted" : "undetermined";
 }
 
 export function subscribeHeartRate(

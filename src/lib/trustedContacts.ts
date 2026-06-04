@@ -85,17 +85,23 @@ export async function resolveTrustedContacts(): Promise<ResolvedContact[]> {
 }
 
 /** All device contacts with at least one phone number, name-sorted. Used by
- *  the in-sheet picker. */
+ *  the in-sheet picker. Failures (permission revoked between checks, OS
+ *  errors, etc.) are swallowed and surface as an empty list — never as an
+ *  unhandled throw inside a crisis-flow click handler. */
 export async function listAllContacts(): Promise<ResolvedContact[]> {
-  const { data } = await Contacts.getContactsAsync({
-    fields: [Contacts.Fields.Name, Contacts.Fields.PhoneNumbers],
-    sort: Contacts.SortTypes.FirstName,
-  });
-  return data
-    .map((c) => {
-      const phone = firstPhone(c);
-      if (!phone || !c.id || !c.name) return null;
-      return { id: c.id, name: c.name, phone };
-    })
-    .filter((c): c is ResolvedContact => c !== null);
+  try {
+    const { data } = await Contacts.getContactsAsync({
+      fields: [Contacts.Fields.Name, Contacts.Fields.PhoneNumbers],
+      sort: Contacts.SortTypes.FirstName,
+    });
+    return data
+      .map((c) => {
+        const phone = firstPhone(c);
+        if (!phone || !c.id || !c.name) return null;
+        return { id: c.id, name: c.name, phone };
+      })
+      .filter((c): c is ResolvedContact => c !== null);
+  } catch {
+    return [];
+  }
 }

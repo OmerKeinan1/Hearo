@@ -50,12 +50,16 @@ export function CrisisSheet() {
     }
   }, []);
 
-  // Re-load whenever the sheet opens, so any change in the OS contact book
-  // or permission state is reflected.
+  // Reset the sheet's inner view to "main" the moment the sheet *closes*, so
+  // when it re-opens the slide-up animation never flashes a stale picker view
+  // before our useEffect-driven reset catches up. Re-load contacts data each
+  // time the sheet opens.
   useEffect(() => {
     if (isOpen) {
-      setView("main");
       void refreshState();
+    } else {
+      setView("main");
+      setPickerCandidates(null);
     }
   }, [isOpen, refreshState]);
 

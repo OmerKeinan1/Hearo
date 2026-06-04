@@ -24,6 +24,9 @@ export async function requestAuthorization(): Promise<AuthorizationStatus> {
 }
 
 export async function getAuthorizationStatus(): Promise<AuthorizationStatus> {
+  // Web / Android have no HealthKit at all. Always undetermined — the iOS
+  // adapter persists a sticky-granted flag and reads from storage to survive
+  // cold start (see healthKit.ios.ts).
   return "undetermined";
 }
 

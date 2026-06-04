@@ -13,6 +13,7 @@ const KEYS = {
   displayNameResolved: `${PREFIX}displayNameResolved`,
   reminderSchedule: `${PREFIX}reminderSchedule`,
   trustedContactIds: `${PREFIX}trustedContactIds`,
+  healthKitGranted: `${PREFIX}healthKitGranted`,
 } as const;
 
 /** A name we've resolved (or explicitly determined we can't resolve) for the
@@ -75,4 +76,23 @@ export async function getTrustedContactIds(): Promise<string[]> {
 
 export async function setTrustedContactIds(ids: string[]): Promise<void> {
   await AsyncStorage.setItem(KEYS.trustedContactIds, JSON.stringify(ids));
+}
+
+/** Sticky flag set the first time HealthKit authorization succeeds. iOS's
+ *  HealthKit read-permission API intentionally hides the user's choice, so
+ *  on cold start we can't query the OS to learn we were previously granted
+ *  — we persist the fact ourselves to avoid re-prompting on every launch.
+ *  If the user revokes in Settings later, data reads just silently return
+ *  nothing and the pulse hook falls through to the mock generator. */
+export async function getHealthKitGranted(): Promise<boolean> {
+  const raw = await AsyncStorage.getItem(KEYS.healthKitGranted);
+  return raw === "true";
+}
+
+export async function setHealthKitGranted(granted: boolean): Promise<void> {
+  if (granted) {
+    await AsyncStorage.setItem(KEYS.healthKitGranted, "true");
+  } else {
+    await AsyncStorage.removeItem(KEYS.healthKitGranted);
+  }
 }

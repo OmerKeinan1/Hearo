@@ -103,15 +103,20 @@ export default function Permissions() {
   const [notifsStatus, setNotifsStatus] = useState<Status>("idle");
   const [showPicker, setShowPicker] = useState(false);
 
-  // On mount, read real notification permission + persisted schedule so the
-  // row reflects actual state, not just session-local UI state. We also probe
-  // HealthKit for an existing authorization (web/Android return undetermined).
+  // On mount, read real notification permission so the row reflects actual
+  // state, not just session-local UI state. Permission is what unlocks
+  // Continue; the schedule is a separate (optional) follow-up the picker
+  // collects below — granted-without-schedule still counts as granted so a
+  // user who allowed in Settings (or in a prior session) isn't stranded.
+  // Auto-prompt the picker when there's no schedule yet, so we still nudge
+  // them to set a time.
   useEffect(() => {
     void (async () => {
       const status = await reminders.getPermissionStatus();
-      const schedule = await reminders.getSchedule();
-      if (status === "granted" && schedule) {
+      if (status === "granted") {
         setNotifsStatus("granted");
+        const schedule = await reminders.getSchedule();
+        if (!schedule) setShowPicker(true);
       } else if (status === "denied") {
         setNotifsStatus("denied");
       }
@@ -130,7 +135,11 @@ export default function Permissions() {
   const onNotifsPress = async () => {
     const status = await reminders.requestPermission();
     if (status === "granted") {
-      setShowPicker(true); // immediately collect the time
+      // Mark granted immediately. Picking a time is a separate question —
+      // if the user dismisses the picker on Android (returns date=undefined),
+      // we must NOT leave them blocked from Continue.
+      setNotifsStatus("granted");
+      setShowPicker(true);
     } else {
       setNotifsStatus("denied");
     }
@@ -141,7 +150,6 @@ export default function Permissions() {
     if (Platform.OS === "android") setShowPicker(false);
     if (!date) return;
     await reminders.setSchedule({ hour: date.getHours(), minute: date.getMinutes() });
-    setNotifsStatus("granted");
     if (Platform.OS === "ios") setShowPicker(false);
   };
 
