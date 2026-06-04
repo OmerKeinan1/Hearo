@@ -5,9 +5,12 @@ import { fonts, tokens } from "@/lib/tokens";
 
 type Props = {
   value: number;
+  /** "mock" surfaces a tiny "(rehearsal)" tag so the user (and clinicians)
+   *  can tell when the pulse isn't coming from a real watch. */
+  source?: "real" | "mock";
 };
 
-export function PulseTicker({ value }: Props) {
+export function PulseTicker({ value, source = "real" }: Props) {
   const { t } = useTranslation();
   return (
     <View className="flex-row items-baseline">
@@ -32,6 +35,20 @@ export function PulseTicker({ value }: Props) {
       >
         {value}
       </Text>
+      {source === "mock" ? (
+        <Text
+          style={{
+            color: tokens.sceneTextMute,
+            fontFamily: fonts.body,
+            fontSize: 11,
+            letterSpacing: 0.6,
+            marginLeft: 8,
+            opacity: 0.7,
+          }}
+        >
+          ({t("session.pulseRehearsal")})
+        </Text>
+      ) : null}
     </View>
   );
 }

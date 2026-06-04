@@ -7,16 +7,12 @@ export const CRISIS_NUMBER = "1201";
 
 type CrisisState = {
   isOpen: boolean;
-  showingTrustedStub: boolean;
   open: () => void;
   close: () => void;
-  showTrustedStub: () => void;
 };
 
 export const useCrisisStore = create<CrisisState>((set) => ({
   isOpen: false,
-  showingTrustedStub: false,
-  open: () => set({ isOpen: true, showingTrustedStub: false }),
-  close: () => set({ isOpen: false, showingTrustedStub: false }),
-  showTrustedStub: () => set({ showingTrustedStub: true }),
+  open: () => set({ isOpen: true }),
+  close: () => set({ isOpen: false }),
 }));

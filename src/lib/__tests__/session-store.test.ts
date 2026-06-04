@@ -2,9 +2,13 @@ import { useSessionStore } from "@/lib/session-store";
 import { getDefaultPreferences } from "@/lib/content";
 
 describe("session-store", () => {
-  const defaults = getDefaultPreferences();
+  // Capture defaults inside beforeEach. getDefaultPreferences() depends on the
+  // current time band; if we cache it at module load we get flakiness when a
+  // test run straddles a band boundary (midnight/5am/noon/6pm).
+  let defaults: ReturnType<typeof getDefaultPreferences>;
 
   beforeEach(() => {
+    defaults = getDefaultPreferences();
     useSessionStore.setState({ scene: defaults.scene, sounds: defaults.sounds });
   });
 
