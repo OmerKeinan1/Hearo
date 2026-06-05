@@ -1,11 +1,13 @@
 # Render Blueprint for the HearO dev server.
 #
-# After PR merges, in Render's dashboard click "New → Blueprint" and point
-# it at the repo — Render reads this file and provisions the service.
+# Renders runs the Docker image declared in /Dockerfile. The wrapper script
+# (dev-server/start.mjs) spawns Metro and opens an ngrok tunnel using
+# NGROK_AUTHTOKEN — Expo's built-in --tunnel path failed against multiple
+# known-good EXPO_TOKEN values, so we manage ngrok ourselves.
 
 services:
   - type: web
-    name: hearoapp-dev
+    name: hearo-dev
     runtime: docker
     plan: free
     region: oregon
@@ -13,5 +15,7 @@ services:
     dockerfilePath: ./Dockerfile
     autoDeploy: true
     envVars:
+      - key: NGROK_AUTHTOKEN
+        sync: false  # set in the Render dashboard from your ngrok account
       - key: EXPO_TOKEN
-        sync: false  # set in the Render dashboard, never commit
+        sync: false  # set in the Render dashboard, same value as in GitHub
