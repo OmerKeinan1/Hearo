@@ -1,0 +1,20 @@
+# Render Blueprint for the HearO dev server.
+#
+# After PR merges, in Render's dashboard click "New → Blueprint" and point
+# it at the repo — Render reads this file and provisions the service.
+
+services:
+  - type: web
+    name: hearo-dev
+    runtime: docker
+    plan: free
+    region: oregon
+    branch: main
+    dockerfilePath: ./Dockerfile
+    autoDeploy: true
+    healthCheckPath: /health
+    envVars:
+      - key: EXPO_TOKEN
+        sync: false  # set in the Render dashboard, the same token GitHub uses
+      - key: NODE_VERSION
+        value: "22"
