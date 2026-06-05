@@ -2,7 +2,16 @@ jest.mock("@react-native-async-storage/async-storage", () =>
   require("@react-native-async-storage/async-storage/jest/async-storage-mock"));
 
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { getDisplayName, setDisplayName } from "@/lib/storage";
+import {
+  getDisplayName,
+  setDisplayName,
+  getReminderSchedule,
+  setReminderSchedule,
+  getTrustedContactIds,
+  setTrustedContactIds,
+  getHealthKitGranted,
+  setHealthKitGranted,
+} from "@/lib/storage";
 
 // Tri-state semantics under test: `undefined` (never tried) vs `null` (tried,
 // nothing usable) vs a string name. Collapsing the first two is the bug to catch.
@@ -30,5 +39,97 @@ describe("storage / display name", () => {
     await setDisplayName(null);
     expect(await AsyncStorage.getItem("hearo:displayName")).toBeNull();
     expect(await getDisplayName()).toBeNull();
+  });
+});
+
+describe("storage / reminder schedule", () => {
+  beforeEach(async () => {
+    await AsyncStorage.clear();
+  });
+
+  it("returns null when no schedule is set", async () => {
+    expect(await getReminderSchedule()).toBeNull();
+  });
+
+  it("round-trips a schedule", async () => {
+    await setReminderSchedule({ hour: 9, minute: 30 });
+    expect(await getReminderSchedule()).toEqual({ hour: 9, minute: 30 });
+  });
+
+  it("setReminderSchedule(null) clears the stored schedule", async () => {
+    await setReminderSchedule({ hour: 9, minute: 30 });
+    await setReminderSchedule(null);
+    expect(await getReminderSchedule()).toBeNull();
+  });
+
+  it("returns null when the stored value is invalid JSON", async () => {
+    await AsyncStorage.setItem("hearo:reminderSchedule", "not-json");
+    expect(await getReminderSchedule()).toBeNull();
+  });
+
+  it("returns null when the parsed object has the wrong shape", async () => {
+    await AsyncStorage.setItem(
+      "hearo:reminderSchedule",
+      JSON.stringify({ hour: "nine" }),
+    );
+    expect(await getReminderSchedule()).toBeNull();
+  });
+});
+
+describe("storage / trusted contact ids", () => {
+  beforeEach(async () => {
+    await AsyncStorage.clear();
+  });
+
+  it("returns an empty array when nothing is stored", async () => {
+    expect(await getTrustedContactIds()).toEqual([]);
+  });
+
+  it("round-trips an ordered list of ids", async () => {
+    await setTrustedContactIds(["a", "b", "c"]);
+    expect(await getTrustedContactIds()).toEqual(["a", "b", "c"]);
+  });
+
+  it("filters non-string entries defensively", async () => {
+    await AsyncStorage.setItem(
+      "hearo:trustedContactIds",
+      JSON.stringify(["a", 42, null, "b"]),
+    );
+    expect(await getTrustedContactIds()).toEqual(["a", "b"]);
+  });
+
+  it("returns an empty array on corrupt JSON", async () => {
+    await AsyncStorage.setItem("hearo:trustedContactIds", "{not json");
+    expect(await getTrustedContactIds()).toEqual([]);
+  });
+
+  it("returns an empty array when the stored value isn't an array", async () => {
+    await AsyncStorage.setItem(
+      "hearo:trustedContactIds",
+      JSON.stringify({ not: "an array" }),
+    );
+    expect(await getTrustedContactIds()).toEqual([]);
+  });
+});
+
+describe("storage / healthkit granted flag", () => {
+  beforeEach(async () => {
+    await AsyncStorage.clear();
+  });
+
+  it("defaults to false", async () => {
+    expect(await getHealthKitGranted()).toBe(false);
+  });
+
+  it("setHealthKitGranted(true) persists the flag", async () => {
+    await setHealthKitGranted(true);
+    expect(await getHealthKitGranted()).toBe(true);
+  });
+
+  it("setHealthKitGranted(false) removes the flag", async () => {
+    await setHealthKitGranted(true);
+    await setHealthKitGranted(false);
+    expect(await getHealthKitGranted()).toBe(false);
+    expect(await AsyncStorage.getItem("hearo:healthKitGranted")).toBeNull();
   });
 });

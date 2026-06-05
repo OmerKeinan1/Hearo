@@ -12,6 +12,14 @@ jest.mock("react-native-reanimated", () =>
   require("react-native-reanimated/mock"),
 );
 
+// AsyncStorage's native module is null under jest. The package ships an
+// in-memory mock for tests — wire it up here so any test that touches storage
+// (directly or transitively, e.g. via lib/trustedContacts → lib/storage)
+// resolves without "NativeModule: AsyncStorage is null".
+jest.mock("@react-native-async-storage/async-storage", () =>
+  require("@react-native-async-storage/async-storage/jest/async-storage-mock"),
+);
+
 // Initialize i18n once so useTranslation() resolves real keys. Device locale is
 // unavailable under jest-expo, so i18n falls back to "he"; pin to a known
 // language for deterministic copy assertions.
@@ -27,5 +35,5 @@ beforeAll(async () => {
 // beforeEach (not afterEach) so it runs after RNTL has already unmounted the
 // previous test's tree, avoiding an act() warning from re-rendering a live tree.
 beforeEach(() => {
-  useCrisisStore.setState({ isOpen: false, showingTrustedStub: false });
+  useCrisisStore.setState({ isOpen: false });
 });
