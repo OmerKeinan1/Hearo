@@ -21,6 +21,11 @@ RUN apt-get update \
 COPY package.json package-lock.json .npmrc ./
 RUN npm ci
 
+# `expo start --tunnel` requires @expo/ngrok at runtime. In interactive mode
+# expo prompts to install it; in --non-interactive it just exits. Pre-install
+# it globally so the spawn finds it.
+RUN npm install -g @expo/ngrok
+
 # Now the rest of the repo — expo start serves files from the project root.
 COPY . .
 
