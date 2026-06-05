@@ -7,7 +7,7 @@ status: draft
 
 # HearO — Product Requirements Document
 
-> A quiet place to walk again.
+> A quiet place to be again.
 
 This PRD consolidates the existing HearO docs into a single product reference. It is a synthesis, not a new source of truth — where it states a behavioral rule, the authoritative contract is the [`openspec/specs/`](../openspec/) capability it cites. Companion docs: [`../README.md`](../README.md) (framing/brand), [`RATIONALE.md`](./RATIONALE.md) (clinical reasoning), [`FRONTEND.md`](./FRONTEND.md) (design system + screen specs), [`CONVENTIONS.md`](./CONVENTIONS.md) (code conventions).
 
@@ -56,7 +56,7 @@ First audience is the Israeli combat veteran (the team can build for them honest
 
 ## 5. Core experience (the session loop)
 
-1. User opens the app → sees today's prepared walk (scene + selected sounds).
+1. User opens the app → sees today's prepared moment (scene + selected sounds).
 2. Taps **begin** → ambient soundscape plays through headphones.
 3. A pre-recorded voice narrates the scene in soft, second-person prose.
 4. After ~60–90s of calm (≈15s in the demo build), a **user-consented** trigger sound enters the mix.
@@ -112,7 +112,7 @@ Six screens in the demo path (settings/profile is post-demo polish). Layout sket
 | 1 | Welcome | single sentence + start |
 | 2 | Permissions | HealthKit + notifications, privacy-framed |
 | 3 | Setup | scene picker + consented sound list (two distinct decisions: *place* vs *consent*) |
-| 4 | Home | today's walk, "ready when you are" |
+| 4 | Home | today's moment, "ready when you are" |
 | 5 | **Session** (hero) | ambient → voice → trigger → pulse loop |
 | 6 | After | pulse sparkline + three-option reflection (`still here` / `shaken` / `steady`) |
 
@@ -122,7 +122,7 @@ Six screens in the demo path (settings/profile is post-demo polish). Layout sket
 - **Type:** Frank Ruhl Libre (display serif) + Heebo (body), one family pair across EN and HE (no serif/sans split between languages).
 - **Motion:** default 600ms ease-out; scene crossfade 4–7s; trigger flash ~200ms (deliberately undramatic); breathing 4s in / 6s out.
 - **Brand / wordmark:** `hear◯` reads as **hear + O** (the O is the breathing circle), never "Hero." Wordmark stays **English-only** in both EN and HE — it is a logo, not a translated string.
-- **Words we use / don't:** "today's walk" not "treatment"; "practice" not "therapy"; "your pulse" not "biometrics"; "you" not "the patient/user"; never name the trigger as "trigger"; never mention "PTSD" or "disorder."
+- **Words we use / don't:** "today's moment" not "treatment"; "practice" not "therapy"; "your pulse" not "biometrics"; "you" not "the patient/user"; never name the trigger as "trigger"; never mention "PTSD" or "disorder."
 - **Bilingual & RTL:** locale detected at launch; Hebrew device → Hebrew UI + RTL; fallback for non-EN/HE devices is **Hebrew**. Full mirroring via `I18nManager.forceRTL` + NativeWind `rtl:` variants.
 
 ## 9. Architecture
