@@ -1,5 +1,19 @@
 import { render, screen, fireEvent } from "@testing-library/react-native";
 
+// expo-contacts uses an ES class that doesn't transpile cleanly in jest-expo
+// (the native module's superclass is undefined at test time → "Super expression
+// must either be null or a function"). The CrisisSheet only needs the contact
+// helpers to *exist* — none of these Tier-1 assertions exercise the picker —
+// so mock the module surface that lib/trustedContacts.ts imports.
+jest.mock("expo-contacts", () => ({
+  getPermissionsAsync: jest.fn().mockResolvedValue({ status: "undetermined" }),
+  requestPermissionsAsync: jest.fn().mockResolvedValue({ status: "denied" }),
+  getContactByIdAsync: jest.fn().mockResolvedValue(undefined),
+  getContactsAsync: jest.fn().mockResolvedValue({ data: [] }),
+  Fields: { Name: "Name", PhoneNumbers: "PhoneNumbers" },
+  SortTypes: { FirstName: "FirstName" },
+}));
+
 import { CrisisSheet } from "../CrisisSheet";
 import { CRISIS_NUMBER, useCrisisStore } from "@/lib/crisis-store";
 
@@ -10,8 +24,7 @@ import { CRISIS_NUMBER, useCrisisStore } from "@/lib/crisis-store";
 // fails loudly if the hard-coded region number ever drifts.
 describe("CrisisSheet", () => {
   beforeEach(() => {
-    // Drive the store directly: the sheet renders off isOpen/showingTrustedStub.
-    useCrisisStore.setState({ isOpen: true, showingTrustedStub: false });
+    useCrisisStore.setState({ isOpen: true });
   });
 
   it("dials EXACTLY tel:1201 when the call line is pressed", () => {
@@ -33,46 +46,12 @@ describe("CrisisSheet", () => {
     openURL.mockRestore();
   });
 
-  it("shows the trusted-contacts stub when 'A person you trust' is pressed", () => {
-    const showTrustedStub = jest.spyOn(
-      useCrisisStore.getState(),
-      "showTrustedStub",
-    );
-
-    render(<CrisisSheet />);
-
-    fireEvent.press(screen.getByText("A person you trust"));
-
-    expect(showTrustedStub).toHaveBeenCalledTimes(1);
-    expect(useCrisisStore.getState().showingTrustedStub).toBe(true);
-    // The stub copy (with its newline) now renders.
-    expect(
-      screen.getByText("You'll be able to add\ntrusted contacts soon."),
-    ).toBeTruthy();
-
-    showTrustedStub.mockRestore();
-  });
-
-  it("hides the call line once the trusted stub is showing", () => {
-    useCrisisStore.setState({ isOpen: true, showingTrustedStub: true });
-
-    render(<CrisisSheet />);
-
-    expect(screen.queryByText(/Call ERAN/)).toBeNull();
-    expect(
-      screen.getByText("You'll be able to add\ntrusted contacts soon."),
-    ).toBeTruthy();
-  });
-
-  it("resets the store when the Close action is pressed", () => {
-    useCrisisStore.setState({ isOpen: true, showingTrustedStub: true });
-
+  it("closes when the Close action is pressed", () => {
     render(<CrisisSheet />);
 
     fireEvent.press(screen.getByText("Close"));
 
     expect(useCrisisStore.getState().isOpen).toBe(false);
-    expect(useCrisisStore.getState().showingTrustedStub).toBe(false);
   });
 
   it("closes when the backdrop 'close crisis support' pressable is pressed", () => {
@@ -81,7 +60,6 @@ describe("CrisisSheet", () => {
     fireEvent.press(screen.getByLabelText("close crisis support"));
 
     expect(useCrisisStore.getState().isOpen).toBe(false);
-    expect(useCrisisStore.getState().showingTrustedStub).toBe(false);
   });
 
   it("renders the title and 'free' copy while open", () => {
