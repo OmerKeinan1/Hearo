@@ -5,7 +5,7 @@
 
 services:
   - type: web
-    name: hearoapp-dev
+    name: hearo-dev
     runtime: docker
     plan: free
     region: oregon
