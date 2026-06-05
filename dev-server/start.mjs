@@ -13,12 +13,24 @@ const PORT = process.env.PORT || 3000;
 
 let currentTunnelUrl = null;
 let lastSeenAt = null;
+let expoExitCode = null;
+const recentOutput = []; // ring buffer of recent expo stdout lines
+const MAX_RECENT_LINES = 80;
 
 function publishUrl(url) {
   if (url === currentTunnelUrl) return;
   currentTunnelUrl = url;
   lastSeenAt = new Date().toISOString();
   console.log(`[dev-server] tunnel URL → ${url}`);
+}
+
+function record(text) {
+  process.stdout.write(text);
+  for (const line of text.split("\n")) {
+    if (!line) continue;
+    recentOutput.push(line);
+    while (recentOutput.length > MAX_RECENT_LINES) recentOutput.shift();
+  }
 }
 
 // Spawn `expo start --tunnel`. Inherit env so EXPO_TOKEN (set in Render's
@@ -35,7 +47,7 @@ const expo = spawn(
 
 function scrape(buf) {
   const text = buf.toString();
-  process.stdout.write(text);
+  record(text);
   // `expo start --tunnel` prints URLs like:
   //   exp://abc-xyz.tunnel.expo.dev:80
   //   exp+hearo://expo-development-client/?url=https%3A%2F%2Fabc.ngrok.io
@@ -47,9 +59,12 @@ function scrape(buf) {
 expo.stdout.on("data", scrape);
 expo.stderr.on("data", scrape);
 expo.on("exit", (code) => {
-  console.error(`[dev-server] expo exited with code ${code}`);
-  // Render will auto-restart the service.
-  process.exit(code ?? 1);
+  expoExitCode = code;
+  console.error(`[dev-server] expo exited with code ${code} — wrapper stays up`);
+  // Deliberately do NOT exit the wrapper. If we did, Render would restart
+  // the whole container in a tight loop and we'd never see the actual
+  // failure. Instead the HTTP surface keeps responding so /tunnel can report
+  // the failure and /diag exposes recent expo output.
 });
 
 // Tiny HTTP surface — just one endpoint plus a health check.
@@ -65,14 +80,39 @@ const server = http.createServer((req, res) => {
         ready: !!currentTunnelUrl,
         url: currentTunnelUrl,
         updatedAt: lastSeenAt,
+        expoExitCode,
       }),
+    );
+    return;
+  }
+
+  if (req.url === "/diag") {
+    // Lightweight diagnostic: recent expo output + exit code. No auth on
+    // purpose — visible to anyone who hits the URL, but only contains build
+    // logs, not secrets (we redact EXPO_TOKEN from env above).
+    res.setHeader("Content-Type", "text/plain");
+    res.end(
+      [
+        `expoExitCode: ${expoExitCode}`,
+        `currentTunnelUrl: ${currentTunnelUrl}`,
+        `lastSeenAt: ${lastSeenAt}`,
+        "",
+        "--- recent expo stdout/stderr ---",
+        ...recentOutput,
+      ].join("\n"),
     );
     return;
   }
 
   if (req.url === "/" || req.url === "/health") {
     res.setHeader("Content-Type", "text/plain");
-    res.end(`hearo dev-server — tunnel ${currentTunnelUrl ?? "warming up"}`);
+    res.end(
+      currentTunnelUrl
+        ? `hearo dev-server — tunnel ${currentTunnelUrl}`
+        : expoExitCode !== null
+        ? `hearo dev-server — expo crashed (code ${expoExitCode}); see /diag`
+        : "hearo dev-server — warming up",
+    );
     return;
   }
 
