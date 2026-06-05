@@ -121,8 +121,12 @@
       </ol>
     </main>
 
-    <!-- Tiny QR library from jsDelivr, ~10KB gzipped. -->
-    <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.4/build/qrcode.min.js"></script>
+    <!-- qrcode-generator @ jsDelivr — small, well-known, no build step. The
+         previous `qrcode@1.5.4/build/qrcode.min.js` path was 404 (npm
+         package doesn't actually ship a /build dir), which left the page
+         silently stuck on "warming…" because renderQr threw on undefined
+         QRCode. -->
+    <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js"></script>
     <script>
       // The Render dev server's public URL. Replace via VERCEL env at build
       // time if we ever script this; for now it's hardcoded after deploy.
@@ -137,19 +141,19 @@
       let warmStartedAt = null;
 
       function renderQr(text) {
-        // Render the QR into an SVG so it scales cleanly on any DPR.
-        const div = document.createElement("div");
-        QRCode.toString(
-          text,
-          { type: "svg", errorCorrectionLevel: "M", margin: 0 },
-          (err, svg) => {
-            if (err) {
-              status.textContent = "Failed to render QR — refresh the page.";
-              return;
-            }
-            qrFrame.innerHTML = svg;
-          },
-        );
+        // Render the QR into an inline SVG so it scales cleanly on any DPR.
+        // qrcode-generator API: qrcode(typeNumber=0 auto, errCorrection 'M').
+        try {
+          const qr = qrcode(0, "M");
+          qr.addData(text);
+          qr.make();
+          // createSvgTag({ scalable: true }) makes the inner SVG fluid so
+          // the .qr-frame's fixed pixel size scales it without blur.
+          qrFrame.innerHTML = qr.createSvgTag({ scalable: true });
+        } catch (err) {
+          status.textContent = "Failed to render QR — refresh the page.";
+          console.error(err);
+        }
       }
 
       async function poll() {
