@@ -1,6 +1,6 @@
 # HearO
 
-A quiet place to walk again.
+A quiet place to be again.
 
 HearO is a mobile app for veterans living with combat-related PTSD. It uses gradual, consent-based sound exposure — ambient soundscapes layered with user-chosen trigger sounds — guided by a pre-recorded voice and watched over by the user's Apple Watch pulse. The user has two control layers: a manual intensity dial that's always reachable, and an automatic pulse-driven response that softens things when their body starts to spike. Both can only make things softer, never louder. No popups. No alarms. The app does the work the user shouldn't have to.
 
@@ -27,7 +27,7 @@ A combat veteran. Possibly currently serving, possibly discharged. Knows their t
 
 ## The core loop (a session)
 
-1. User opens app. App shows today's prepared walk (scene + selected sounds).
+1. User opens app. App shows today's prepared moment (scene + selected sounds).
 2. User taps **begin**. Ambient soundscape plays through headphones (river, city, etc.).
 3. A pre-recorded voice narrates the scene in soft, second-person prose.
 4. After ~60–90 seconds, a user-consented trigger sound enters the soundscape (motorcycle, helicopter, etc.).
@@ -68,7 +68,7 @@ Applies to every surface — screen copy, notifications, marketing, pitch deck.
 
 ```
                        use                    do not use
-session             →  "today's walk"      ✗  "treatment"
+session             →  "today's moment"    ✗  "treatment"
 trigger sound       →  (do not name it)    ✗  "trigger"
 exposure            →  "practice"          ✗  "therapy"
 heart rate          →  "your pulse"        ✗  "biometrics"

@@ -69,7 +69,7 @@ export function localize(text: LocalizedText, lang: string): string {
 const SCENES: Record<SceneKey, Scene> = {
   beach: {
     key: "beach",
-    label: { en: "Beach walk, evening", he: "טיול בחוף, ערב" },
+    label: { en: "Beach, evening", he: "חוף, ערב" },
     short: { en: "Beach", he: "חוף" },
     media: {
       still: require("@/assets/scenes/beach.png"),

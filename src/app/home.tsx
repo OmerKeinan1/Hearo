@@ -65,7 +65,7 @@ export default function Home() {
               marginBottom: 14,
             }}
           >
-            {t("home.todaysWalk")}
+            {t("home.todaysMoment")}
           </Text>
 
           <Text

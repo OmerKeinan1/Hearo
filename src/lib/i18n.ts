@@ -6,7 +6,7 @@ const resources = {
   en: {
     translation: {
       welcome: {
-        line: "A quiet place\nto walk again.",
+        line: "A quiet place\nto be again.",
         begin: "Begin",
       },
       permissions: {
@@ -25,11 +25,11 @@ const resources = {
         pickTime: "When would you like the daily reminder?",
         confirm: "Save",
         notificationTitle: "HearO",
-        notificationBody: "A quiet walk is ready when you are.",
+        notificationBody: "A quiet moment is ready when you are.",
         enableInSettings: "Enable in Settings",
       },
       setup: {
-        sceneQuestion: "Where would you\nlike to walk?",
+        sceneQuestion: "Where would you\nlike to be?",
         soundsQuestion: "Which sounds are\nyou ready to hear?",
         soundsHint: "Pick what feels true. You can change this anytime.",
         ready: "Ready",
@@ -48,7 +48,7 @@ const resources = {
           evening: "Good evening.",
           night: "Good night.",
         },
-        todaysWalk: "Today's walk",
+        todaysMoment: "Today's moment",
         durationHint: "About six minutes",
         begin: "Begin",
         change: "Change what's planned",
@@ -91,7 +91,7 @@ const resources = {
   he: {
     translation: {
       welcome: {
-        line: "מקום שקט\nללכת בו שוב.",
+        line: "מקום שקט\nלהיות בו שוב.",
         begin: "התחל",
       },
       permissions: {
@@ -110,11 +110,11 @@ const resources = {
         pickTime: "מתי תרצה את התזכורת היומית?",
         confirm: "שמור",
         notificationTitle: "HearO",
-        notificationBody: "הליכה שקטה מחכה לך כשתהיה מוכן.",
+        notificationBody: "רגע שקט מחכה לך כשתהיה מוכן.",
         enableInSettings: "הפעל בהגדרות",
       },
       setup: {
-        sceneQuestion: "איפה תרצה\nללכת?",
+        sceneQuestion: "איפה תרצה\nלהיות?",
         soundsQuestion: "אילו צלילים אתה\nמוכן לשמוע?",
         soundsHint: "בחר את מה שמרגיש נכון. תוכל לשנות זאת בכל עת.",
         ready: "מוכן",
@@ -133,7 +133,7 @@ const resources = {
           evening: "ערב טוב.",
           night: "לילה טוב.",
         },
-        todaysWalk: "ההליכה של היום",
+        todaysMoment: "הרגע של היום",
         durationHint: "בערך שש דקות",
         begin: "התחל",
         change: "שנה את התכנון",
