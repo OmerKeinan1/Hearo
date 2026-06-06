@@ -6,11 +6,14 @@
 // whole layer and drive ngrok ourselves via the @ngrok/ngrok JS module with
 // a user-controlled authtoken (NGROK_AUTHTOKEN env var).
 //
-// Flow:
-//   1. Spawn `expo start --port 8081` (Metro on localhost:8081, no tunnel).
-//   2. Open an ngrok HTTP tunnel pointing at localhost:8081.
-//   3. Compose an exp:// URL from the ngrok hostname and publish it on
-//      /tunnel so the Vercel QR page can render it.
+// Boot order (important — Metro needs to know its public hostname BEFORE
+// starting, otherwise it advertises localhost in manifests and Expo Go can't
+// fetch bundles):
+//
+//   1. Open ngrok HTTP tunnel pointing at port 8081 → get public URL.
+//   2. Spawn `expo start --port 8081` with REACT_NATIVE_PACKAGER_HOSTNAME
+//      set to the ngrok host. Metro then puts that host in manifest URLs.
+//   3. Compose exp://<ngrok-host> for the QR.
 
 import { spawn } from "node:child_process";
 import http from "node:http";
@@ -23,6 +26,7 @@ let currentTunnelUrl = null;
 let lastSeenAt = null;
 let expoExitCode = null;
 let ngrokError = null;
+let expo = null;
 const recentOutput = [];
 const MAX_RECENT_LINES = 80;
 
@@ -42,40 +46,44 @@ function publishUrl(url) {
   console.log(`[dev-server] tunnel URL → ${url}`);
 }
 
-// Spawn Metro. No --tunnel; we'll add ngrok separately.
-const expo = spawn(
-  "npx",
-  ["expo", "start", "--port", String(METRO_PORT)],
-  {
-    cwd: process.cwd(),
-    env: { ...process.env, CI: "1" },
-    stdio: ["ignore", "pipe", "pipe"],
-  },
-);
-expo.stdout.on("data", (buf) => record(buf.toString()));
-expo.stderr.on("data", (buf) => record(buf.toString()));
-expo.on("exit", (code) => {
-  expoExitCode = code;
-  console.error(`[dev-server] expo exited with code ${code} — wrapper stays up`);
-});
+function startExpo(packagerHostname) {
+  // REACT_NATIVE_PACKAGER_HOSTNAME tells Metro which host to put in the
+  // manifest URLs it serves. Without it Metro uses localhost, and Expo Go
+  // fails to fetch the bundle (it'd try the phone's own localhost).
+  // host_header rewrite on the ngrok side keeps Metro's Host check happy
+  // when the inbound request arrives.
+  console.log(`[dev-server] starting Metro with hostname=${packagerHostname}`);
+  expo = spawn(
+    "npx",
+    ["expo", "start", "--port", String(METRO_PORT)],
+    {
+      cwd: process.cwd(),
+      env: {
+        ...process.env,
+        CI: "1",
+        REACT_NATIVE_PACKAGER_HOSTNAME: packagerHostname,
+      },
+      stdio: ["ignore", "pipe", "pipe"],
+    },
+  );
+  expo.stdout.on("data", (buf) => record(buf.toString()));
+  expo.stderr.on("data", (buf) => record(buf.toString()));
+  expo.on("exit", (code) => {
+    expoExitCode = code;
+    console.error(`[dev-server] expo exited with code ${code} — wrapper stays up`);
+  });
+}
 
-// Start ngrok in parallel. We don't wait for Metro to be ready first — the
-// tunnel can exist even before Metro is listening; the first request through
-// it will simply fail until Metro is up, which is fine.
-//
-// Render's free tier kills containers without SIGTERM when it sleeps, which
-// means our ngrok.disconnect() in SIGTERM handler doesn't run. The dead
-// session keeps holding our static ngrok domain until ngrok's heartbeat
-// timeout (~60s) reaps it. Until then, a fresh connect() fails with
-// ERR_NGROK_334 "endpoint already online". We retry with backoff until the
-// ghost session times out.
+// Retry on ghost-session error (ERR_NGROK_334). Render's free tier kills
+// containers without SIGTERM when sleeping, so previous sessions hang on
+// the static ngrok domain until heartbeat reaps them (~60s).
 const RETRY_DELAYS_MS = [10_000, 20_000, 30_000, 45_000, 60_000];
 
 async function startNgrokWithRetry() {
   if (!process.env.NGROK_AUTHTOKEN) {
     ngrokError = "NGROK_AUTHTOKEN env var not set in Render";
     console.error(`[dev-server] ${ngrokError}`);
-    return;
+    return null;
   }
 
   for (let attempt = 0; attempt <= RETRY_DELAYS_MS.length; attempt++) {
@@ -83,17 +91,17 @@ async function startNgrokWithRetry() {
       const listener = await ngrok.connect({
         addr: METRO_PORT,
         authtoken: process.env.NGROK_AUTHTOKEN,
-        // HTTP tunnel — Expo Go reads bundles over HTTP. ngrok terminates
-        // HTTPS at the edge and forwards to Metro as HTTP.
         proto: "http",
+        // Rewrite the inbound Host header to localhost:8081 before
+        // forwarding to Metro. Without this Metro receives Host:
+        // <ngrok-domain> and may reject the request as a CSRF guard.
+        host_header: "rewrite",
       });
-      const publicUrl = listener.url(); // e.g. https://abc123.ngrok-free.app
-      // Compose exp:// from the hostname. Expo Go opens exp://host expecting
-      // a Metro dev server on the other side; ngrok's public URL serves that.
+      const publicUrl = listener.url();
       const host = new URL(publicUrl).host;
       publishUrl(`exp://${host}`);
       ngrokError = null;
-      return;
+      return host;
     } catch (err) {
       const msg = err?.message ?? String(err);
       const isGhostSession =
@@ -101,7 +109,7 @@ async function startNgrokWithRetry() {
       if (!isGhostSession || attempt === RETRY_DELAYS_MS.length) {
         ngrokError = msg;
         console.error(`[dev-server] ngrok failed (no retry): ${msg}`);
-        return;
+        return null;
       }
       const wait = RETRY_DELAYS_MS[attempt];
       ngrokError = `ghost session, retrying in ${wait / 1000}s (attempt ${attempt + 1})`;
@@ -109,15 +117,20 @@ async function startNgrokWithRetry() {
       await new Promise((resolve) => setTimeout(resolve, wait));
     }
   }
+  return null;
 }
-startNgrokWithRetry();
+
+// Bring up ngrok first, then start Metro with the right hostname env.
+(async () => {
+  const host = await startNgrokWithRetry();
+  if (host) startExpo(host);
+})();
 
 // Tiny HTTP surface — / health, /tunnel for the Vercel poller, /diag for us.
 const server = http.createServer((req, res) => {
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Cache-Control", "no-store");
 
-  // Strip query string for path matching (so /diag?_=cache-bust works).
   const path = (req.url || "/").split("?")[0];
 
   if (path === "/tunnel") {
@@ -175,7 +188,7 @@ server.listen(PORT, () => {
 });
 
 process.on("SIGTERM", () => {
-  expo.kill("SIGTERM");
+  if (expo) expo.kill("SIGTERM");
   void ngrok.disconnect();
   server.close(() => process.exit(0));
 });
