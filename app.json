@@ -8,7 +8,7 @@
       "url": "https://u.expo.dev/28a06970-0528-4ec2-9a2d-aec8b75d8757"
     },
     "runtimeVersion": {
-      "policy": "appVersion"
+      "policy": "sdkVersion"
     },
     "icon": "./assets/images/icon.png",
     "scheme": "hearo",
