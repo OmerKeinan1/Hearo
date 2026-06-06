@@ -47,12 +47,24 @@ function publishUrl(url) {
 }
 
 function startExpo(packagerHostname) {
-  // REACT_NATIVE_PACKAGER_HOSTNAME tells Metro which host to put in the
-  // manifest URLs it serves. Without it Metro uses localhost, and Expo Go
-  // fails to fetch the bundle (it'd try the phone's own localhost).
-  // host_header rewrite on the ngrok side keeps Metro's Host check happy
-  // when the inbound request arrives.
-  console.log(`[dev-server] starting Metro with hostname=${packagerHostname}`);
+  // Two env vars are critical for Metro to serve a manifest Expo Go can
+  // actually fetch the bundle from:
+  //
+  // REACT_NATIVE_PACKAGER_HOSTNAME — host Metro puts in manifest URLs.
+  //   Without this Metro uses localhost; Expo Go would try the phone's own
+  //   localhost and hang.
+  //
+  // EXPO_PACKAGER_PROXY_URL — full URL (scheme + host + port) Metro should
+  //   advertise as the proxy in front of itself. We're behind ngrok, which
+  //   exposes 443/HTTPS on the public side and forwards to Metro's 8081
+  //   internally. Without this, Metro's manifest URLs include :8081, but
+  //   ngrok isn't listening on 8081 publicly — bundle fetch fails. Setting
+  //   the proxy URL to `https://<ngrok-host>` (no port → 443) makes Expo
+  //   Go go through ngrok cleanly. See @expo/cli/UrlCreator.getProxyUrl().
+  const proxyUrl = `https://${packagerHostname}`;
+  console.log(
+    `[dev-server] starting Metro with hostname=${packagerHostname} proxyUrl=${proxyUrl}`,
+  );
   expo = spawn(
     "npx",
     ["expo", "start", "--port", String(METRO_PORT)],
@@ -62,6 +74,7 @@ function startExpo(packagerHostname) {
         ...process.env,
         CI: "1",
         REACT_NATIVE_PACKAGER_HOSTNAME: packagerHostname,
+        EXPO_PACKAGER_PROXY_URL: proxyUrl,
       },
       stdio: ["ignore", "pipe", "pipe"],
     },
