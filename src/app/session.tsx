@@ -617,7 +617,7 @@ export default function Session() {
             <PulseTicker value={pulseBpm} />
             <Pressable hitSlop={12} onPress={() => dispatch({ type: "SESSION_END" })}>
               <Text style={{ color: tokens.text, fontFamily: fonts.body, fontSize: 16, opacity: 0.85 }}>
-                [ {t("session.pause")} ]
+                [ {t("session.end")} ]
               </Text>
             </Pressable>
           </View>
