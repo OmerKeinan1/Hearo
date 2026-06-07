@@ -32,7 +32,7 @@ The app is a **monolithic frontend** talking directly to **Supabase**. There is 
 | Charts | `victory-native` or `react-native-svg-charts` | only if we need them |
 | Linting | `eslint` + `@react-native/eslint-config` | planned |
 | Formatting | Prettier | planned |
-| Audio | `expo-audio` | in use |
+| Audio | `react-native-audio-api` (Software Mansion) | in use — requires dev build, Expo Go incompatible |
 | Video | `expo-video` | planned (scene loops, asset-blocked) |
 
 ## 2. Folder structure

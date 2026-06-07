@@ -9,53 +9,48 @@ status: reviewed
 
 > Index: [`README.md`](./README.md) · Spec: [`exposure-session`](../../openspec/specs/exposure-session/spec.md)
 
-**Responsibility:** run the opening→during→calming walk loop — ambient, voice,
-trigger entry, breathing, elapsed time, early exit, and the after-walk check-in.
+**Responsibility:** run the five-state session walk — asset loading, voice disclaimer,
+ambient soundscape, HR-adaptive trigger exposure, wind-down, and post-session feedback.
 
 ## Tactical model
 
-- **Aggregate root: `Walk`** (a.k.a. exposure session) — `scene`, `phase`, `elapsed`, `triggerClip | null`, `status` (`active | paused | ended`), `breathingPace`.
-- **Entities / value objects:** `Phase` (`opening|during|calming`), `BreathingPace` (4s/6s → 5s/8s), `TriggerClip` (a chosen audio variation), `CheckIn` (`still here|shaken|steady` — code: `Reflection`, see Index §1).
-- **Domain events:** `WalkBegun`, `PhaseEntered`, `TriggerEntered`, `BreathingPaceChanged`, `WalkPaused` / `WalkResumed` (observed from Crisis Access's `isOpen`), `WalkEndedEarly`, `WalkCompleted`, `CheckInRecorded`.
-  - Conceptual — the session is driven by a local time-script + interval today, not an emitted event stream (see gaps).
+- **Aggregate root: `Walk`** — `scene`, `machineState`, `elapsed`, `triggerSource | null`, `status` (`active | paused | ended`), `sessionBaseline`.
+- **Entities / value objects:** `MachineState` (`LOADING | DISCLAIMER | AMBIENT_FADE_IN | ADAPTIVE_LOOP | WIND_DOWN | POST_SESSION`), `TriggerSource` (a chosen audio variation), `FeedbackAnswers` (post-session questionnaire), `CheckIn` (after-walk reflection).
+- **Domain events:** `WalkBegun`, `AssetsReady`, `DisclaimerDone`, `BaselineEstablished`, `PulseSpiked` / `PulseNormalized` (from Pulse Monitoring), `WalkEndedEarly`, `WalkCompleted`, `FeedbackSubmitted`, `CheckInRecorded`.
 
 ## Invariants
 
-- Phases occur **in order** `opening → during → calming`; never skipped or reordered.
-- A trigger plays **only** for a consented sound; empty consent ⇒ rehearsal walk
-  (no trigger, ambient+voice uninterrupted). *(Cross-cutting policy 4.)*
+- States advance **in order**: `LOADING → DISCLAIMER → AMBIENT_FADE_IN → ADAPTIVE_LOOP → WIND_DOWN → POST_SESSION`. No state is skipped or reordered in the normal path.
+- A trigger plays **only** for a consented sound; empty consent list ⇒ rehearsal walk (ambient + voice, no trigger). *(Cross-cutting policy 4.)*
+- **No live audio streaming** during an active session — all assets must be on-device before `LOADING` completes.
 - **No visible pre-trigger warning** — only the ~200ms breathing-circle flash. *(Cross-cutting policy 5.)*
 - Display is **elapsed time only** (`m:ss`), never a countdown.
-- Early exit **records** the partial walk (not discarded) and routes to After.
+- Early exit routes to the After screen; partial session is recorded, not discarded.
 - Output respects the absolute ceiling via `TriggerOutputPolicy`. *(Cross-cutting policy 1; owned by [`3-intensity-control.md`](./3-intensity-control.md).)*
 
 ## Relationships
 
 - **Downstream conformist** of Crisis Access — observes `isOpen`, pauses/resumes.
-- Consumes **Content Provisioning** (Published Language: `Scene`/`Sound`/`VoiceScript`).
-- Reads the **ceiling** from Intensity Control and the **consent list / scene**
-  from User Profile (read models, at mount).
-- Subscribes to **Pulse Monitoring** events to drive calming + auto-attenuation.
-
-## Note on `BreathingPace`
-
-The calming/slow pace is currently switched by the **mock `PulsePhase`**
-(`session.tsx:62`, `slow = pulsePhase === "peak" || "settling"`), which is
-**time-scripted** by the demo `SCRIPT`, not driven by a live pulse-threshold
-crossing. The model's "when pulse crosses threshold" is the *intended* trigger.
+- Consumes **Content Provisioning** (`Scene`, `Sound`, `AmbientTrack`, `VoiceClip`).
+- Reads the ceiling from Intensity Control and consent list / scene from User Profile at mount.
+- Subscribes to `PulseSpiked` / `PulseNormalized` from Pulse Monitoring to drive trigger gain.
 
 ## Today (code mapping)
 
-- `src/app/session.tsx`, `src/app/after.tsx`
-- `src/lib/session-store.ts` — the *pre-walk selection* read at mount (see [`6-user-profile-consent.md`](./6-user-profile-consent.md))
-- `src/lib/audio.ts` (`pickRandomTrigger` = the rehearsal-walk decision)
-- `src/components/BreathingCircle.tsx`, `VoiceLine.tsx`, `PulseTicker.tsx`
+- `src/app/session.tsx` — five-state `useReducer` machine; `useAudioEngine` + `usePulseMonitor` wired here.
+- `src/lib/audio-engine.ts` — `AudioEngine` class (Web Audio Graph: Ambient/Trigger/Voice GainNodes).
+- `src/hooks/useAudioEngine.ts` — React hook owning `AudioEngine` lifetime.
+- `src/hooks/usePulseMonitor.ts` — HR baseline measurement, spike/normalize events, BLE disconnect.
+- `src/lib/asset-cache.ts` — CDN manifest check + `expo-file-system` download (used in LOADING).
+- `src/lib/content.ts` — `AmbientTrack`, `VoiceClip` types + getters.
+- `src/components/features/post-session/` — `PostSessionFeedback` component (POST_SESSION state).
+- `src/app/after.tsx` — after-walk reflection screen.
+- `src/lib/session-store.ts` — pre-walk selection (scene, consented sounds) read at mount.
 
 ## Gaps & compliance flags
 
-- **⚠️ Ubiquitous-language drift:** model term **Check-in** vs code type
-  `Reflection` (`after.tsx:10`). Reconcile.
-- **Check-in persistence:** `CheckInRecorded` is unimplemented — `after.tsx` holds
-  the reflection in local `useState` with no store/persistence (only the pulse
-  sparkline carries a `TODO(supabase)`).
-- **Breathing/calming** is time-scripted, not pulse-threshold-driven (see note).
+- **⚠️ Ubiquitous-language drift:** model term **Check-in** vs code type `Reflection` (`after.tsx`). Reconcile.
+- **Check-in persistence:** `CheckInRecorded` unimplemented — reflection held in local `useState` with no persistence (only `TODO(supabase)` marker).
+- **Feedback persistence:** `FeedbackAnswers` held in memory; `TODO(supabase)` marker in `PostSessionFeedback` for when schema lands.
+- **Breathing pace:** `BreathingCircle` `slow` prop is driven by the `isSpiked` flag from `usePulseMonitor` — now pulse-threshold-driven, not time-scripted. Gap closed.
+- **HealthKit:** `usePulseMonitor` uses the mock generator as fallback. HealthKit ACL is a future change; the event seam (`PulseSpiked`/`PulseNormalized`) is live and ready.

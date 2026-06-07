@@ -259,3 +259,125 @@ export function getSound(key: SoundKey): Sound {
 export function getDefaultPreferences(): Preferences {
   return { scene: "park", sounds: ["motorcycle"] };
 }
+
+// ── Ambient tracks ────────────────────────────────────────────────────────
+
+/** A looping ambient soundscape asset. */
+export type AmbientTrack = {
+  key: string;
+  label: LocalizedText;
+  // TODO(supabase): `ambient_tracks` table — key, labels, cdn_url, sha256.
+  // AudioModule (require()) for the bundled fallback; string CDN URI otherwise.
+  source: AudioModule | string;
+  /** SHA-256 of the CDN file — used by asset-cache for freshness checks. */
+  sha256?: string;
+};
+
+/** Returns true when a source field is still an unresolved placeholder.
+ *  Guards against passing placeholder strings to AudioEngine.loadBuffers(). */
+export function isPlaceholderSource(source: AudioModule | string): boolean {
+  return typeof source === "string" && source.startsWith("TODO_");
+}
+
+// Bundled ambient tracks per scene — one variation is picked randomly at
+// session start so repeat sessions feel slightly different.
+// TODO(supabase): `ambient_tracks` table — replace require() with CDN URIs.
+const AMBIENT_TRACKS: Record<SceneKey, { label: LocalizedText; variations: AudioModule[] }> = {
+  beach: {
+    label: { en: "Ocean shore", he: "חוף הים" },
+    variations: [
+      require("@/assets/sounds/ambient/beach/Soothing_ocean_shore_1-1780143780490.mp3"),
+      require("@/assets/sounds/ambient/beach/Soothing_ocean_shore_2-1780143780491.mp3"),
+      require("@/assets/sounds/ambient/beach/Soothing_ocean_shore_3-1780143780491.mp3"),
+      require("@/assets/sounds/ambient/beach/Soothing_ocean_shore_4-1780143781749.mp3"),
+    ],
+  },
+  park: {
+    label: { en: "Forest ambience", he: "יער" },
+    variations: [
+      require("@/assets/sounds/ambient/forest/Immersive_outdoor_so_1-1780143574058.mp3"),
+      require("@/assets/sounds/ambient/forest/Immersive_outdoor_so_2-1780143574059.mp3"),
+      require("@/assets/sounds/ambient/forest/Immersive_outdoor_so_3-1780143574059.mp3"),
+      require("@/assets/sounds/ambient/forest/Immersive_outdoor_so_4-1780143574060.mp3"),
+    ],
+  },
+  cafe: {
+    label: { en: "Coffee shop", he: "בית קפה" },
+    variations: [
+      require("@/assets/sounds/ambient/coffee shop/Realistic_indoor_cof_1-1780143636373.mp3"),
+      require("@/assets/sounds/ambient/coffee shop/Realistic_indoor_cof_2-1780143636374.mp3"),
+      require("@/assets/sounds/ambient/coffee shop/Realistic_indoor_cof_3-1780143636374.mp3"),
+      require("@/assets/sounds/ambient/coffee shop/Realistic_indoor_cof_4-1780143637364.mp3"),
+    ],
+  },
+  road: {
+    label: { en: "City street", he: "רחוב עירוני" },
+    variations: [
+      require("@/assets/sounds/ambient/street/Steady_urban_city_st_1-1780143711219.mp3"),
+      require("@/assets/sounds/ambient/street/Steady_urban_city_st_2-1780143711220.mp3"),
+      require("@/assets/sounds/ambient/street/Steady_urban_city_st_3-1780143711220.mp3"),
+      require("@/assets/sounds/ambient/street/Steady_urban_city_st_4-1780143711220.mp3"),
+    ],
+  },
+};
+
+// TODO(supabase): `supabase.from('ambient_tracks').select('*').eq('scene', scene)`
+export function getAmbientTrack(scene: SceneKey): AmbientTrack {
+  const track = AMBIENT_TRACKS[scene];
+  const source = track.variations[Math.floor(Math.random() * track.variations.length)];
+  return { key: `ambient/${scene}`, label: track.label, source };
+}
+
+// ── Voice clips ───────────────────────────────────────────────────────────
+
+/** A pre-recorded voice clip played at specific session moments. */
+export type VoiceClip = {
+  key: "disclaimer" | "mid-session" | "wind-down";
+  label: LocalizedText;
+  // TODO(supabase): `voice_clips` table — key, lang, cdn_url, sha256, duration_ms.
+  // Source can be a bundled AudioModule or a CDN URI string (MP3/MP4).
+  source: AudioModule | string;
+  sha256?: string;
+  durationMs?: number;
+};
+
+export type VoiceClipKey = VoiceClip["key"];
+
+// Voice clip order matches the playVoiceClip(index) contract in AudioEngine:
+//   index 0 = DISCLAIMER, index 1 = MID_SESSION, index 2 = WIND_DOWN
+// TODO(asset): replace placeholder sources with actual recordings once
+// approved by the clinical team (Dudi Efrati).
+const VOICE_CLIPS: VoiceClip[] = [
+  {
+    key: "disclaimer",
+    label: {
+      en: "Session intro",
+      he: "פתיח הסשן",
+    },
+    // TODO(asset): require("@/assets/sounds/voice/disclaimer.mp3") or CDN URI
+    source: "TODO_REPLACE_WITH_DISCLAIMER_ASSET",
+  },
+  {
+    key: "mid-session",
+    label: {
+      en: "Halfway check-in",
+      he: "מחצית הסשן",
+    },
+    // TODO(asset): require("@/assets/sounds/voice/mid-session.mp3") or CDN URI
+    source: "TODO_REPLACE_WITH_MID_SESSION_ASSET",
+  },
+  {
+    key: "wind-down",
+    label: {
+      en: "Session close",
+      he: "סיום הסשן",
+    },
+    // TODO(asset): require("@/assets/sounds/voice/wind-down.mp3") or CDN URI
+    source: "TODO_REPLACE_WITH_WIND_DOWN_ASSET",
+  },
+];
+
+// TODO(supabase): `supabase.from('voice_clips').select('*').order('sort_order')`
+export function getVoiceClips(): VoiceClip[] {
+  return VOICE_CLIPS;
+}
