@@ -29,20 +29,29 @@ const VALID_SCENES: SceneKey[] = ["beach", "park", "cafe", "road"];
 // TODO(supabase): session_programs table — per-scene timing config.
 const AMBIENT_FADE_IN_MS = 2 * 60 * 1000; // 2 minutes
 
-// Total ADAPTIVE_LOOP duration (trigger ramp duration).
+// Total ADAPTIVE_LOOP duration.
 const ADAPTIVE_LOOP_MS = 8 * 60 * 1000; // 8 minutes
 
-// dB ceiling per trigger sound type.
-// TODO(supabase): sounds table — ceiling_db per sound key.
+// dB gain ceiling per trigger sound type (applied at slider=1.0).
+// 0 dB = gain 1.0 = play at recorded level. Negative values attenuate.
+// TODO(supabase): calibrate per sound key once clinical review is complete.
 const TRIGGER_CEILING_DB: Record<string, number> = {
-  motorcycle: 75,
-  helicopter: 70,
-  fireworks: 72,
-  siren: 73,
-  "car-horn": 70,
-  "door-slam": 68,
+  motorcycle: 0,
+  helicopter: 0,
+  fireworks: 0,
+  siren: 0,
+  "car-horn": 0,
+  "door-slam": 0,
 };
-const DEFAULT_CEILING_DB = 70;
+const DEFAULT_CEILING_DB = 0;
+
+// Burst scheduler defaults.
+// TODO(supabase): session_programs table — per-scene/per-sound timing config.
+const TRIGGER_INTERVAL_MIN_MS = 15_000; // minimum gap between bursts
+const TRIGGER_INTERVAL_MAX_MS = 45_000; // maximum gap (randomized)
+const TRIGGER_BURST_DURATION_MS = 8_000; // time at peak gain per burst
+const TRIGGER_FADE_IN_MS = 1_500;        // onset ramp
+const TRIGGER_FADE_OUT_MS = 1_500;       // offset ramp
 
 // Manual distress auto-return after 90 seconds (no watch / watch disconnected).
 const MANUAL_RETURN_MS = 90_000;
@@ -132,6 +141,9 @@ export default function Session() {
   const pausedSince = useRef<number | null>(null);
   const manualReturnTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const manualCountdownInterval = useRef<ReturnType<typeof setInterval> | null>(null);
+  // Stores the dB ceiling for the active trigger sound so the intensity slider
+  // can compute the correct peak gain without re-running the ADAPTIVE_LOOP effect.
+  const triggerCeilingDbRef = useRef<number>(DEFAULT_CEILING_DB);
 
   // ── Audio engine ───────────────────────────────────────────────────────
 
@@ -203,7 +215,7 @@ export default function Session() {
   useEffect(() => {
     if (machineState !== "LOADING") return;
 
-    const ambientTrack = getAmbientTrack();
+    const ambientTrack = getAmbientTrack(scene);
     const voiceClips = getVoiceClips();
 
     // Only include CDN assets (skip placeholders — no network call possible).
@@ -235,7 +247,7 @@ export default function Session() {
   useEffect(() => {
     if (machineState !== "DISCLAIMER") return;
 
-    const ambientTrack = getAmbientTrack();
+    const ambientTrack = getAmbientTrack(scene);
     const voiceClips = getVoiceClips();
     const disclaimerClip = voiceClips[0];
 
@@ -282,6 +294,7 @@ export default function Session() {
     }
 
     const ceilingDb = TRIGGER_CEILING_DB[sound] ?? DEFAULT_CEILING_DB;
+    triggerCeilingDbRef.current = ceilingDb;
     let cancelled = false;
     let timerId: ReturnType<typeof setTimeout>;
 
@@ -295,9 +308,13 @@ export default function Session() {
       .loadTrigger(triggerSource)
       .then(() => {
         if (cancelled) return;
-        engine.startTriggerRamp({
-          durationSeconds: ADAPTIVE_LOOP_MS / 1000,
-          ceilingGain: dBToGain(ceilingDb) * ceiling,
+        engine.startTriggerScheduler({
+          intervalMinMs: TRIGGER_INTERVAL_MIN_MS,
+          intervalMaxMs: TRIGGER_INTERVAL_MAX_MS,
+          burstDurationMs: TRIGGER_BURST_DURATION_MS,
+          fadeInMs: TRIGGER_FADE_IN_MS,
+          fadeOutMs: TRIGGER_FADE_OUT_MS,
+          peakGain: dBToGain(ceilingDb) * ceiling,
         });
         timerId = setTimeout(() => {
           if (machineStateRef.current === "ADAPTIVE_LOOP") dispatch({ type: "SESSION_END" });
@@ -316,8 +333,8 @@ export default function Session() {
       cancelled = true;
       clearTimeout(timerId);
     };
-  // ceiling intentionally excluded — setTriggerCeiling effect handles live updates.
-  // Including it would restart the ramp (and duplicate the source node) on every slider move.
+  // ceiling intentionally excluded — setTriggerPeakGain effect handles live updates.
+  // Including it would restart the scheduler (and reload the source node) on every slider move.
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [machineState, consentedSounds, engine]);
 
@@ -380,10 +397,10 @@ export default function Session() {
     router.push("/after");
   }, [router]);
 
-  // ── Intensity slider → engine ceiling ─────────────────────────────────
+  // ── Intensity slider → engine peak gain ───────────────────────────────
 
   useEffect(() => {
-    engine.setTriggerCeiling(ceiling);
+    engine.setTriggerPeakGain(dBToGain(triggerCeilingDbRef.current) * ceiling);
   }, [ceiling, engine]);
 
   // ── Crisis sheet pause/resume ─────────────────────────────────────────

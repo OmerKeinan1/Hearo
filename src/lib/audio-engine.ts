@@ -1,18 +1,20 @@
 // Three-layer Web Audio graph for HearO exposure sessions.
 //
 // Layer 1  Ambient  — looping soundscape, gain locked at 1.0
-// Layer 2  Trigger  — looping trigger sound, gain ramps from 0 toward dB
-//                     ceiling logarithmically; HR events control the ramp
-// Layer 3  Voice    — one-shot voice clips; ducks TriggerGain while playing
+// Layer 2  Trigger  — intermittent burst scheduler: fires at randomized
+//                     intervals, each burst fades in → plays → fades out.
+//                     HR events pause/resume the scheduler.
+// Layer 3  Voice    — one-shot voice clips; interrupts any active burst
 //
 // Usage lifecycle:
 //   1. new AudioEngine()
-//   2. await engine.loadBuffers(ambientSource, triggerSource, voiceClipSources)
-//   3. engine.startAmbient()          — call at AMBIENT_FADE_IN entry
-//   4. engine.startTriggerRamp(opts)  — call at ADAPTIVE_LOOP entry
-//   5. engine.onSpike() / onNormalized()  — driven by usePulseMonitor
-//   6. engine.playVoiceClip(index)    — DISCLAIMER / MID_SESSION / WIND_DOWN
-//   7. engine.destroy()               — on unmount or session end
+//   2. await engine.loadAmbientAndVoice(ambientSrc, voiceSrcs)
+//   3. await engine.loadTrigger(triggerSrc)
+//   4. engine.startAmbient()               — call at AMBIENT_FADE_IN entry
+//   5. engine.startTriggerScheduler(cfg)   — call at ADAPTIVE_LOOP entry
+//   6. engine.onSpike() / onNormalized()   — driven by usePulseMonitor
+//   7. engine.playVoiceClip(index)         — DISCLAIMER / MID_SESSION / WIND_DOWN
+//   8. engine.destroy()                    — on unmount or session end
 
 import {
   AudioContext,
@@ -29,19 +31,6 @@ export function dBToGain(dB: number): number {
   return Math.pow(10, dB / 20);
 }
 
-// Build a perceptually even (linear-dB) ramp from fromGain to toGain.
-// Returned Float32Array can be passed to setValueCurveAtTime.
-function buildLogCurve(fromGain: number, toGain: number, steps: number): Float32Array {
-  const fromDB = 20 * Math.log10(Math.max(fromGain, SILENCE_GAIN));
-  const toDB = 20 * Math.log10(Math.max(toGain, SILENCE_GAIN));
-  const arr = new Float32Array(steps);
-  for (let i = 0; i < steps; i++) {
-    const db = fromDB + ((toDB - fromDB) * i) / (steps - 1);
-    arr[i] = Math.pow(10, db / 20);
-  }
-  return arr;
-}
-
 // Cancel any scheduled gain automation and freeze at the current instantaneous
 // value. cancelScheduledValues alone does NOT stop a mid-flight curve; we need
 // cancelAndHoldAtTime (or the setValueAtTime workaround if unavailable).
@@ -49,8 +38,6 @@ function freezeGain(gain: GainNode['gain'], ctx: AudioContext): void {
   const now = ctx.currentTime;
   const current = gain.value;
   gain.cancelScheduledValues(now);
-  // cancelAndHoldAtTime freezes a mid-flight curve at its current value.
-  // Fall back to setValueAtTime if the method is absent (partial implementations).
   if (typeof (gain as any).cancelAndHoldAtTime === 'function') {
     (gain as any).cancelAndHoldAtTime(now);
   } else {
@@ -58,11 +45,24 @@ function freezeGain(gain: GainNode['gain'], ctx: AudioContext): void {
   }
 }
 
-export interface TriggerRampOptions {
-  /** Total ramp duration in seconds (= ADAPTIVE_LOOP expected duration). */
-  durationSeconds: number;
-  /** Linear gain ceiling (use dBToGain from your content definitions). */
-  ceilingGain: number;
+function randomBetween(minMs: number, maxMs: number): number {
+  return minMs + Math.random() * (maxMs - minMs);
+}
+
+/** Configuration for the intermittent trigger burst scheduler. */
+export interface TriggerSchedulerConfig {
+  /** Minimum wait between the end of one burst and the start of the next (ms). */
+  intervalMinMs: number;
+  /** Maximum wait between bursts (ms). Actual interval is randomized in this range. */
+  intervalMaxMs: number;
+  /** How long each burst plays at full gain before fading out (ms). */
+  burstDurationMs: number;
+  /** Fade-in duration for each burst (ms). Smooths the onset. */
+  fadeInMs: number;
+  /** Fade-out duration at burst end (ms). */
+  fadeOutMs: number;
+  /** Peak linear gain for the trigger during a burst. Use dBToGain() from content. */
+  peakGain: number;
 }
 
 export type { AudioBuffer };
@@ -80,16 +80,18 @@ export class AudioEngine {
   private triggerBuffer: AudioBuffer | null = null;
   private voiceBuffers: AudioBuffer[] = [];
 
-  // Active looping source nodes.
+  // Active looping source node for ambient.
   private ambientSource: AudioBufferSourceNode | null = null;
-  private triggerSource: AudioBufferSourceNode | null = null;
 
-  // Ramp tracking.
-  private _ceilingGain = 0;
-  private _rampDuration = 0;
-  private _rampStartTime = 0;
-  private _preSpikeGain = SILENCE_GAIN;
-  private _isSpiked = false;
+  // ── Burst scheduler state ────────────────────────────────────────────────
+
+  private _config: TriggerSchedulerConfig | null = null;
+  private _schedulerTimer: ReturnType<typeof setTimeout> | null = null;
+  private _burstEndTimer: ReturnType<typeof setTimeout> | null = null;
+  private _burstCleanupTimer: ReturnType<typeof setTimeout> | null = null;
+  private _burstSource: AudioBufferSourceNode | null = null;
+  private _burstActive = false;
+  private _schedulerPaused = false;
   private _graceTimer: ReturnType<typeof setTimeout> | null = null;
 
   constructor() {
@@ -111,7 +113,6 @@ export class AudioEngine {
 
   // Two-phase loading: ambient + voice clips are needed for DISCLAIMER;
   // the trigger buffer is only needed at ADAPTIVE_LOOP entry.
-  // Separating them avoids passing an empty placeholder as triggerSource.
 
   async loadAmbientAndVoice(
     ambientSource: number | string,
@@ -145,88 +146,159 @@ export class AudioEngine {
     this.ambientSource = src;
   }
 
-  // ── Trigger ramp ─────────────────────────────────────────────────────────
-
-  startTriggerRamp(opts: TriggerRampOptions): void {
-    if (!this.triggerBuffer) throw new Error('trigger buffer not loaded');
-
-    // Idempotency guard: stop any existing trigger source before creating a new one.
-    // Prevents doubled audio if called more than once (e.g. effect dep-array bug).
-    if (this.triggerSource) {
-      try { this.triggerSource.stop(); } catch { /* already stopped */ }
-      this.triggerSource = null;
-    }
-
-    this._ceilingGain = opts.ceilingGain;
-    this._rampDuration = opts.durationSeconds;
-    this._rampStartTime = this.ctx.currentTime;
-    this._isSpiked = false;
-
-    const src = this.ctx.createBufferSource();
-    src.buffer = this.triggerBuffer;
-    src.loop = true;
-    src.loopStart = 0;
-    src.loopEnd = this.triggerBuffer.duration;
-    src.connect(this.triggerGain);
-    src.start(0);
-    this.triggerSource = src;
-
-    this._scheduleRamp(SILENCE_GAIN, opts.ceilingGain, opts.durationSeconds);
+  setAmbientGain(gain: number): void {
+    const clamped = Math.min(1.0, Math.max(SILENCE_GAIN, gain));
+    freezeGain(this.ambientGain.gain, this.ctx);
+    this.ambientGain.gain.linearRampToValueAtTime(clamped, this.ctx.currentTime + 0.05);
   }
 
-  // Schedule a perceptual gain ramp. The curve is offset by a tiny amount to
-  // avoid colliding with any preceding setValueAtTime at `now`.
-  private _scheduleRamp(
-    fromGain: number,
-    toGain: number,
-    durationSeconds: number
-  ): void {
+  // ── Burst scheduler ──────────────────────────────────────────────────────
+
+  startTriggerScheduler(config: TriggerSchedulerConfig): void {
+    if (!this.triggerBuffer) throw new Error('trigger buffer not loaded');
+    this._config = { ...config };
+    this._schedulerPaused = false;
+    this._scheduleNextBurst();
+  }
+
+  stopTriggerScheduler(): void {
+    this._schedulerPaused = true;
+    this._clearSchedulerTimers();
+    this._stopBurstNow();
+  }
+
+  private _scheduleNextBurst(): void {
+    if (this._schedulerPaused || !this._config) return;
+    const delay = randomBetween(this._config.intervalMinMs, this._config.intervalMaxMs);
+    this._schedulerTimer = setTimeout(() => this._fireBurst(), delay);
+  }
+
+  private _fireBurst(): void {
+    if (this._schedulerPaused || !this._config || !this.triggerBuffer) return;
+
+    const cfg = this._config;
     const now = this.ctx.currentTime;
-    // Freeze any in-flight curve before scheduling new one.
+    const fadeInSec = cfg.fadeInMs / 1000;
+
+    // Create a fresh non-looping source node for this burst.
+    const src = this.ctx.createBufferSource();
+    src.buffer = this.triggerBuffer;
+    src.loop = false;
+    src.connect(this.triggerGain);
+
+    // Ramp gain from silence → peak over fadeIn window.
     freezeGain(this.triggerGain.gain, this.ctx);
-    const curve = buildLogCurve(fromGain, toGain, 200);
-    // Small offset avoids same-timestamp conflict between freeze and curve.
-    this.triggerGain.gain.setValueCurveAtTime(curve, now + 0.001, durationSeconds);
+    this.triggerGain.gain.setValueAtTime(SILENCE_GAIN, now);
+    this.triggerGain.gain.linearRampToValueAtTime(cfg.peakGain, now + fadeInSec);
+
+    src.start(now);
+    this._burstSource = src;
+    this._burstActive = true;
+
+    // Schedule fade-out after burstDuration.
+    this._burstEndTimer = setTimeout(
+      () => this._endBurst(),
+      cfg.fadeInMs + cfg.burstDurationMs
+    );
+  }
+
+  private _endBurst(): void {
+    if (!this._config) return;
+    const cfg = this._config;
+    const now = this.ctx.currentTime;
+    const fadeOutSec = cfg.fadeOutMs / 1000;
+
+    freezeGain(this.triggerGain.gain, this.ctx);
+    this.triggerGain.gain.linearRampToValueAtTime(SILENCE_GAIN, now + fadeOutSec);
+
+    // Stop the source node after the fade completes, then schedule next burst.
+    this._burstCleanupTimer = setTimeout(() => {
+      this._stopBurstNow();
+      this._scheduleNextBurst();
+    }, cfg.fadeOutMs + 50);
+  }
+
+  // Hard-stop the current burst source and reset burst state.
+  private _stopBurstNow(): void {
+    if (this._burstSource) {
+      try { this._burstSource.stop(); } catch { /* already stopped */ }
+      this._burstSource = null;
+    }
+    this._burstActive = false;
+  }
+
+  private _clearSchedulerTimers(): void {
+    if (this._schedulerTimer) { clearTimeout(this._schedulerTimer); this._schedulerTimer = null; }
+    if (this._burstEndTimer) { clearTimeout(this._burstEndTimer); this._burstEndTimer = null; }
+    if (this._burstCleanupTimer) { clearTimeout(this._burstCleanupTimer); this._burstCleanupTimer = null; }
+  }
+
+  // Interrupt an active burst with a fast fade-out (used before voice playback).
+  private _interruptBurst(): void {
+    this._clearSchedulerTimers();
+    const now = this.ctx.currentTime;
+    freezeGain(this.triggerGain.gain, this.ctx);
+    this.triggerGain.gain.linearRampToValueAtTime(SILENCE_GAIN, now + 0.3);
+    setTimeout(() => this._stopBurstNow(), 350);
+  }
+
+  // ── Live config setters ──────────────────────────────────────────────────
+
+  setTriggerPeakGain(gain: number): void {
+    if (!this._config) return;
+    this._config.peakGain = Math.max(SILENCE_GAIN, gain);
+    // If a burst is currently at full gain, update it live.
+    if (this._burstActive) {
+      const now = this.ctx.currentTime;
+      freezeGain(this.triggerGain.gain, this.ctx);
+      this.triggerGain.gain.linearRampToValueAtTime(this._config.peakGain, now + 0.1);
+    }
+  }
+
+  setIntervalRange(minMs: number, maxMs: number): void {
+    if (!this._config) return;
+    this._config.intervalMinMs = minMs;
+    this._config.intervalMaxMs = maxMs;
+    // Takes effect at the next scheduled burst — no need to reset the current timer.
+  }
+
+  setBurstDuration(ms: number): void {
+    if (!this._config) return;
+    this._config.burstDurationMs = ms;
+  }
+
+  get currentTriggerGain(): number {
+    return this.triggerGain.gain.value;
+  }
+
+  get isBurstActive(): boolean {
+    return this._burstActive;
   }
 
   // ── Spike / normalize ────────────────────────────────────────────────────
 
   onSpike(): void {
-    // Guard: only active once trigger is running and not already spiked.
-    if (!this.triggerSource || this._isSpiked) return;
-    this._isSpiked = true;
-
-    this._preSpikeGain = this.triggerGain.gain.value;
-
-    const now = this.ctx.currentTime;
-    freezeGain(this.triggerGain.gain, this.ctx);
-    this.triggerGain.gain.linearRampToValueAtTime(SILENCE_GAIN, now + 2.5);
-
-    if (this._graceTimer) clearTimeout(this._graceTimer);
+    if (this._schedulerPaused) return;
+    this._schedulerPaused = true;
+    this._clearSchedulerTimers();
+    // Fade out any active burst immediately.
+    if (this._burstActive) {
+      const now = this.ctx.currentTime;
+      freezeGain(this.triggerGain.gain, this.ctx);
+      this.triggerGain.gain.linearRampToValueAtTime(SILENCE_GAIN, now + 2.5);
+      setTimeout(() => this._stopBurstNow(), 2600);
+    }
+    if (this._graceTimer) { clearTimeout(this._graceTimer); this._graceTimer = null; }
   }
 
   onNormalized(): void {
-    if (!this._isSpiked) return;
-
+    if (!this._schedulerPaused) return;
     if (this._graceTimer) clearTimeout(this._graceTimer);
-
     this._graceTimer = setTimeout(() => {
-      // Guard against callback firing after destroy().
       if (this.ctx.state === 'closed') return;
-
-      this._isSpiked = false;
       this._graceTimer = null;
-
-      const remaining = Math.max(
-        this._rampDuration - (this.ctx.currentTime - this._rampStartTime),
-        10
-      );
-
-      // Update tracking so subsequent spikes compute remaining time correctly.
-      this._rampStartTime = this.ctx.currentTime;
-      this._rampDuration = remaining;
-
-      this._scheduleRamp(this._preSpikeGain, this._ceilingGain, remaining);
+      this._schedulerPaused = false;
+      this._scheduleNextBurst();
     }, 30_000);
   }
 
@@ -236,56 +308,30 @@ export class AudioEngine {
     const buffer = this.voiceBuffers[index];
     if (!buffer) return Promise.resolve();
 
-    const now = this.ctx.currentTime;
-
-    // If a spike is active, the trigger is already at silence — skip
-    // the save/restore cycle entirely to avoid competing schedules.
-    const shouldRestoreTrigger = !this._isSpiked;
-    const savedTriggerGain = shouldRestoreTrigger
-      ? this.triggerGain.gain.value
-      : SILENCE_GAIN;
-
-    // Duck trigger immediately.
-    freezeGain(this.triggerGain.gain, this.ctx);
-    this.triggerGain.gain.setValueAtTime(0, now);
+    // Stop any active burst with a fast fade before starting voice.
+    this._interruptBurst();
 
     return new Promise<void>((resolve) => {
-      const src = this.ctx.createBufferSource();
-      src.buffer = buffer;
-      src.connect(this.voiceGain);
+      // Small delay to let the burst interrupt fade settle.
+      setTimeout(() => {
+        const src = this.ctx.createBufferSource();
+        src.buffer = buffer;
+        src.connect(this.voiceGain);
 
-      let resolved = false;
+        let resolved = false;
+        const finish = () => {
+          if (resolved) return;
+          resolved = true;
+          // Resume scheduler after voice clip finishes (if not paused by spike).
+          if (!this._schedulerPaused) this._scheduleNextBurst();
+          resolve();
+        };
 
-      const finish = () => {
-        if (resolved) return;
-        resolved = true;
-
-        if (shouldRestoreTrigger) {
-          const t = this.ctx.currentTime;
-          freezeGain(this.triggerGain.gain, this.ctx);
-          this.triggerGain.gain.setValueAtTime(0, t);
-          this.triggerGain.gain.linearRampToValueAtTime(savedTriggerGain, t + 1.0);
-        }
-        resolve();
-      };
-
-      // onended fires when the source finishes (non-looping).
-      src.onEnded = finish;
-      // Safety net in case the library does not implement onended reliably.
-      setTimeout(finish, buffer.duration * 1000 + 300);
-
-      src.start(0);
+        src.onEnded = finish;
+        setTimeout(finish, buffer.duration * 1000 + 300);
+        src.start(0);
+      }, 350);
     });
-  }
-
-  // ── Ceiling control (intensity slider) ───────────────────────────────────
-
-  setTriggerCeiling(gain: number): void {
-    this._ceilingGain = Math.max(SILENCE_GAIN, gain);
-  }
-
-  get currentTriggerGain(): number {
-    return this.triggerGain.gain.value;
   }
 
   // ── Pause / resume (crisis sheet) ───────────────────────────────────────
@@ -301,29 +347,29 @@ export class AudioEngine {
   // ── Wind-down ────────────────────────────────────────────────────────────
 
   fadeOutAll(durationSeconds = 3): void {
+    this._clearSchedulerTimers();
+    this._schedulerPaused = true;
+    this._stopBurstNow(); // stop the active source node immediately
+
     const now = this.ctx.currentTime;
     const end = now + durationSeconds;
 
+    // Trigger: fast silence (300ms) — no more bursts once wind-down starts.
+    freezeGain(this.triggerGain.gain, this.ctx);
+    this.triggerGain.gain.linearRampToValueAtTime(SILENCE_GAIN, now + 0.3);
+
+    // Ambient: gradual fade over the full wind-down duration.
     freezeGain(this.ambientGain.gain, this.ctx);
     this.ambientGain.gain.linearRampToValueAtTime(0, end);
-
-    freezeGain(this.triggerGain.gain, this.ctx);
-    this.triggerGain.gain.linearRampToValueAtTime(0, end);
   }
 
   // ── Cleanup ──────────────────────────────────────────────────────────────
 
   destroy(): void {
-    if (this._graceTimer) {
-      clearTimeout(this._graceTimer);
-      this._graceTimer = null;
-    }
-    try {
-      this.ambientSource?.stop();
-      this.triggerSource?.stop();
-    } catch {
-      // Already stopped — ignore.
-    }
+    this._clearSchedulerTimers();
+    if (this._graceTimer) { clearTimeout(this._graceTimer); this._graceTimer = null; }
+    this._stopBurstNow();
+    try { this.ambientSource?.stop(); } catch { /* already stopped */ }
     this.ctx.close();
   }
 }

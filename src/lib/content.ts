@@ -279,20 +279,53 @@ export function isPlaceholderSource(source: AudioModule | string): boolean {
   return typeof source === "string" && source.startsWith("TODO_");
 }
 
-// One basic ambient track is bundled in the app to reduce onboarding friction
-// and provide a fallback when the CDN is unreachable.
-// TODO(asset): replace placeholder with the actual bundled ambient file once
-// produced by the audio team.
-const BUNDLED_AMBIENT: AmbientTrack = {
-  key: "ambient/default",
-  label: { en: "Calm ambience", he: "סביבה רגועה" },
-  // TODO(asset): require("@/assets/sounds/ambient/default.m4a")
-  source: "TODO_REPLACE_WITH_BUNDLED_ASSET",
+// Bundled ambient tracks per scene — one variation is picked randomly at
+// session start so repeat sessions feel slightly different.
+// TODO(supabase): `ambient_tracks` table — replace require() with CDN URIs.
+const AMBIENT_TRACKS: Record<SceneKey, { label: LocalizedText; variations: AudioModule[] }> = {
+  beach: {
+    label: { en: "Ocean shore", he: "חוף הים" },
+    variations: [
+      require("@/assets/sounds/ambient/beach/Soothing_ocean_shore_1-1780143780490.mp3"),
+      require("@/assets/sounds/ambient/beach/Soothing_ocean_shore_2-1780143780491.mp3"),
+      require("@/assets/sounds/ambient/beach/Soothing_ocean_shore_3-1780143780491.mp3"),
+      require("@/assets/sounds/ambient/beach/Soothing_ocean_shore_4-1780143781749.mp3"),
+    ],
+  },
+  park: {
+    label: { en: "Forest ambience", he: "יער" },
+    variations: [
+      require("@/assets/sounds/ambient/forest/Immersive_outdoor_so_1-1780143574058.mp3"),
+      require("@/assets/sounds/ambient/forest/Immersive_outdoor_so_2-1780143574059.mp3"),
+      require("@/assets/sounds/ambient/forest/Immersive_outdoor_so_3-1780143574059.mp3"),
+      require("@/assets/sounds/ambient/forest/Immersive_outdoor_so_4-1780143574060.mp3"),
+    ],
+  },
+  cafe: {
+    label: { en: "Coffee shop", he: "בית קפה" },
+    variations: [
+      require("@/assets/sounds/ambient/coffee shop/Realistic_indoor_cof_1-1780143636373.mp3"),
+      require("@/assets/sounds/ambient/coffee shop/Realistic_indoor_cof_2-1780143636374.mp3"),
+      require("@/assets/sounds/ambient/coffee shop/Realistic_indoor_cof_3-1780143636374.mp3"),
+      require("@/assets/sounds/ambient/coffee shop/Realistic_indoor_cof_4-1780143637364.mp3"),
+    ],
+  },
+  road: {
+    label: { en: "City street", he: "רחוב עירוני" },
+    variations: [
+      require("@/assets/sounds/ambient/street/Steady_urban_city_st_1-1780143711219.mp3"),
+      require("@/assets/sounds/ambient/street/Steady_urban_city_st_2-1780143711220.mp3"),
+      require("@/assets/sounds/ambient/street/Steady_urban_city_st_3-1780143711220.mp3"),
+      require("@/assets/sounds/ambient/street/Steady_urban_city_st_4-1780143711220.mp3"),
+    ],
+  },
 };
 
-// TODO(supabase): `supabase.from('ambient_tracks').select('*')`
-export function getAmbientTrack(): AmbientTrack {
-  return BUNDLED_AMBIENT;
+// TODO(supabase): `supabase.from('ambient_tracks').select('*').eq('scene', scene)`
+export function getAmbientTrack(scene: SceneKey): AmbientTrack {
+  const track = AMBIENT_TRACKS[scene];
+  const source = track.variations[Math.floor(Math.random() * track.variations.length)];
+  return { key: `ambient/${scene}`, label: track.label, source };
 }
 
 // ── Voice clips ───────────────────────────────────────────────────────────

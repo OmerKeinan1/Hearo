@@ -1,22 +1,44 @@
 import { useEffect, useRef, useCallback } from 'react';
-import { AudioEngine, TriggerRampOptions } from '@/lib/audio-engine';
+import { AudioEngine, TriggerSchedulerConfig } from '@/lib/audio-engine';
+
+export type { TriggerSchedulerConfig };
 
 export interface UseAudioEngineResult {
+  // ── Loading ──
   loadAmbientAndVoice: (
     ambientSource: number | string,
     voiceClipSources: (number | string)[]
   ) => Promise<void>;
   loadTrigger: (triggerSource: number | string) => Promise<void>;
+
+  // ── Ambient ──
   startAmbient: () => void;
-  startTriggerRamp: (opts: TriggerRampOptions) => void;
+  setAmbientGain: (gain: number) => void;
+
+  // ── Trigger scheduler ──
+  startTriggerScheduler: (config: TriggerSchedulerConfig) => void;
+  stopTriggerScheduler: () => void;
+
+  // ── Live config updates ──
+  setTriggerPeakGain: (gain: number) => void;
+  setIntervalRange: (minMs: number, maxMs: number) => void;
+  setBurstDuration: (ms: number) => void;
+
+  // ── HR spike integration ──
   onSpike: () => void;
   onNormalized: () => void;
+
+  // ── Voice ──
   playVoiceClip: (index: number) => Promise<void>;
-  setTriggerCeiling: (gain: number) => void;
+
+  // ── Session lifecycle ──
   pauseAll: () => Promise<void>;
   resumeAll: () => Promise<void>;
   fadeOutAll: (durationSeconds?: number) => void;
+
+  // ── Observability ──
   currentTriggerGain: () => number;
+  isBurstActive: () => boolean;
 }
 
 export function useAudioEngine(): UseAudioEngineResult {
@@ -48,8 +70,33 @@ export function useAudioEngine(): UseAudioEngineResult {
 
   const startAmbient = useCallback(() => engineRef.current!.startAmbient(), []);
 
-  const startTriggerRamp = useCallback(
-    (opts: TriggerRampOptions) => engineRef.current!.startTriggerRamp(opts),
+  const setAmbientGain = useCallback(
+    (gain: number) => engineRef.current!.setAmbientGain(gain),
+    []
+  );
+
+  const startTriggerScheduler = useCallback(
+    (config: TriggerSchedulerConfig) => engineRef.current!.startTriggerScheduler(config),
+    []
+  );
+
+  const stopTriggerScheduler = useCallback(
+    () => engineRef.current!.stopTriggerScheduler(),
+    []
+  );
+
+  const setTriggerPeakGain = useCallback(
+    (gain: number) => engineRef.current!.setTriggerPeakGain(gain),
+    []
+  );
+
+  const setIntervalRange = useCallback(
+    (minMs: number, maxMs: number) => engineRef.current!.setIntervalRange(minMs, maxMs),
+    []
+  );
+
+  const setBurstDuration = useCallback(
+    (ms: number) => engineRef.current!.setBurstDuration(ms),
     []
   );
 
@@ -59,11 +106,6 @@ export function useAudioEngine(): UseAudioEngineResult {
 
   const playVoiceClip = useCallback(
     (index: number) => engineRef.current!.playVoiceClip(index),
-    []
-  );
-
-  const setTriggerCeiling = useCallback(
-    (gain: number) => engineRef.current!.setTriggerCeiling(gain),
     []
   );
 
@@ -81,18 +123,28 @@ export function useAudioEngine(): UseAudioEngineResult {
     []
   );
 
+  const isBurstActive = useCallback(
+    () => engineRef.current?.isBurstActive ?? false,
+    []
+  );
+
   return {
     loadAmbientAndVoice,
     loadTrigger,
     startAmbient,
-    startTriggerRamp,
+    setAmbientGain,
+    startTriggerScheduler,
+    stopTriggerScheduler,
+    setTriggerPeakGain,
+    setIntervalRange,
+    setBurstDuration,
     onSpike,
     onNormalized,
     playVoiceClip,
-    setTriggerCeiling,
     pauseAll,
     resumeAll,
     fadeOutAll,
     currentTriggerGain,
+    isBurstActive,
   };
 }
