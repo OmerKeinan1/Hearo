@@ -14,8 +14,13 @@ import { Heebo_400Regular, Heebo_500Medium } from "@expo-google-fonts/heebo";
 
 import { CrisisSheet } from "@/components/CrisisSheet";
 import { isRTL } from "@/lib/i18n";
+import { configureNotificationHandler, reassertSchedule } from "@/lib/reminders";
 
 SplashScreen.preventAutoHideAsync().catch(() => {});
+
+// One-time, module-level: tells expo-notifications how to render notifications
+// that arrive while the app is in the foreground. Safe to call at import time.
+configureNotificationHandler();
 
 export default function RootLayout() {
   const [fontsLoaded] = useFonts({
@@ -36,6 +41,9 @@ export default function RootLayout() {
   useEffect(() => {
     if (fontsLoaded) {
       SplashScreen.hideAsync().catch(() => {});
+      // Re-register any persisted daily reminder with the OS scheduler.
+      // Idempotent: a no-op when no schedule is stored.
+      void reassertSchedule();
     }
   }, [fontsLoaded]);
 

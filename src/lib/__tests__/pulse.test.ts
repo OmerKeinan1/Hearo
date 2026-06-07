@@ -20,7 +20,8 @@ describe("usePulse", () => {
     const { result } = renderHook(() =>
       usePulse({ active: true, phase: "baseline" }),
     );
-    expect(result.current).toBe(74);
+    expect(result.current.value).toBe(74);
+    expect(result.current.source).toBe("mock");
   });
 
   it("does not change while inactive", () => {
@@ -30,7 +31,7 @@ describe("usePulse", () => {
     act(() => {
       jest.advanceTimersByTime(2000);
     });
-    expect(result.current).toBe(74);
+    expect(result.current.value).toBe(74);
   });
 
   it("rises toward the peak target over time when active", () => {
@@ -40,8 +41,8 @@ describe("usePulse", () => {
     act(() => {
       jest.advanceTimersByTime(2200); // ~10 ticks @ 220ms
     });
-    expect(result.current).toBeGreaterThan(74);
-    expect(result.current).toBeLessThanOrEqual(112);
+    expect(result.current.value).toBeGreaterThan(74);
+    expect(result.current.value).toBeLessThanOrEqual(112);
   });
 
   it("clamps the value within [58, 130]", () => {
@@ -51,8 +52,8 @@ describe("usePulse", () => {
     act(() => {
       jest.advanceTimersByTime(60000);
     });
-    expect(result.current).toBeGreaterThanOrEqual(58);
-    expect(result.current).toBeLessThanOrEqual(130);
+    expect(result.current.value).toBeGreaterThanOrEqual(58);
+    expect(result.current.value).toBeLessThanOrEqual(130);
   });
 
   it("clears its interval on unmount", () => {

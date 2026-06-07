@@ -96,7 +96,7 @@ Six screens in the demo path. Settings/profile is post-demo polish.
 1. Welcome           single sentence + start
 2. Permissions       HealthKit + notifications, privacy-framed
 3. Setup             scene picker + consented sound list
-4. Home              today's walk, ready when you are
+4. Home              today's moment, ready when you are
 5. Session   ★HERO   ambient → voice → trigger → pulse loop
 6. After             pulse sparkline + three-option reflection
 ```
@@ -111,7 +111,7 @@ Six screens in the demo path. Settings/profile is post-demo polish.
 │   ─                     │
 │                         │
 │   a quiet place         │   serif, large
-│   to walk again.        │
+│   to be again.          │
 │                         │
 │                         │
 │                         │
@@ -159,7 +159,7 @@ The last line is load-bearing. Make it true: no analytics that ping home without
 │  ←                      │
 │                         │
 │  where would you        │
-│  like to walk?          │
+│  like to be?            │
 │                         │
 │  ●  river path          │
 │  ○  city, evening       │
@@ -200,7 +200,7 @@ Two distinct sections by design. Picking a scene is a *place* decision. Picking 
 │  good evening,          │
 │  shai.                  │
 │                         │
-│  today's walk           │
+│  today's moment         │
 │                         │
 │  river path             │
 │  with motorcycle        │
@@ -222,12 +222,12 @@ Note: "about six minutes" not "6:00". Duration is approximate, not a stopwatch �
 ┌─────────────────────────┐
 │  i                    × │
 │                         │
-│  river walk, evening    │
+│  beach, evening         │
 │                         │
 │                         │
 │   you're walking        │   voice line, serif,
-│   along the river.      │   fades in/out as voice
-│   the air is cool.      │   speaks. one line at a time.
+│   along the beach.      │   fades in/out as voice
+│   the waves are quiet.  │   speaks. one line at a time.
 │                         │
 │          ◯              │   breathing circle
 │        ◯   ◯            │   4s in / 6s out
