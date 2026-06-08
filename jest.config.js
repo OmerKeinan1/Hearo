@@ -32,6 +32,11 @@ module.exports = {
     "!src/lib/healthKit.ts",
     "!src/lib/healthKit.ios.ts",
     "!src/lib/pulse.ts",
+    // Runtime integration modules: asset-cache wraps expo-file-system and
+    // audio-engine wraps react-native-audio-api. They need SDK-specific mocks
+    // before a per-file 95/90 coverage gate is meaningful.
+    "!src/lib/asset-cache.ts",
+    "!src/lib/audio-engine.ts",
     // CrisisSheet renders the trusted-contact picker which transitively
     // imports expo-contacts; coverage above the gate requires the same
     // expo-contacts mock infrastructure tracked above.

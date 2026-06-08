@@ -6,6 +6,9 @@ import {
   getSound,
   getVoiceScript,
   getDefaultPreferences,
+  getAmbientTrack,
+  getVoiceClips,
+  isPlaceholderSource,
   SCENE_ORDER,
   SOUND_ORDER,
 } from "@/lib/content";
@@ -75,6 +78,46 @@ describe("content / default preferences", () => {
     expect(SCENE_ORDER).toContain(prefs.scene);
     for (const sound of prefs.sounds) {
       expect(SOUND_ORDER).toContain(sound);
+    }
+  });
+});
+
+describe("content / session audio sources", () => {
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  it("identifies unresolved TODO source placeholders only", () => {
+    expect(isPlaceholderSource("TODO_REPLACE_WITH_AUDIO")).toBe(true);
+    expect(isPlaceholderSource("https://cdn.example.com/audio.mp3")).toBe(false);
+    expect(isPlaceholderSource(1)).toBe(false);
+  });
+
+  it("returns a bundled ambient track for every scene", () => {
+    jest.spyOn(Math, "random").mockReturnValue(0);
+
+    for (const scene of SCENE_ORDER) {
+      const track = getAmbientTrack(scene);
+      expect(track.key).toBe(`ambient/${scene}`);
+      expect(track.label.en.length).toBeGreaterThan(0);
+      expect(track.label.he.length).toBeGreaterThan(0);
+      expect(track.source).toBe(1);
+      expect(isPlaceholderSource(track.source)).toBe(false);
+    }
+  });
+
+  it("keeps voice clip order stable and marks missing recordings as placeholders", () => {
+    const clips = getVoiceClips();
+    expect(clips.map((clip) => clip.key)).toEqual([
+      "disclaimer",
+      "mid-session",
+      "wind-down",
+    ]);
+
+    for (const clip of clips) {
+      expect(clip.label.en.length).toBeGreaterThan(0);
+      expect(clip.label.he.length).toBeGreaterThan(0);
+      expect(isPlaceholderSource(clip.source)).toBe(true);
     }
   });
 });
