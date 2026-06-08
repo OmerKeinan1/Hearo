@@ -20,9 +20,14 @@ jest.mock("@react-native-async-storage/async-storage", () =>
   require("@react-native-async-storage/async-storage/jest/async-storage-mock"),
 );
 
-// Initialize i18n once so useTranslation() resolves real keys. Device locale is
-// unavailable under jest-expo, so i18n falls back to "he"; pin to a known
-// language for deterministic copy assertions.
+// i18n imports expo-localization at module load. Mock it before importing i18n
+// so every Jest worker starts with the same deterministic device locale.
+jest.mock("expo-localization", () => ({
+  getLocales: jest.fn(() => [{ languageCode: "en" }]),
+}));
+
+// Initialize i18n once so useTranslation() resolves real keys. The mocked
+// device locale starts in English; keep it pinned there for copy assertions.
 import i18n from "@/lib/i18n";
 import { useCrisisStore } from "@/lib/crisis-store";
 

@@ -1,7 +1,14 @@
 # Test Coverage Plan — Hearo
 
-**Status:** Phases 0–3 implemented · **Date:** 2026-06-02 · **Owner:** QE
+**Status:** Phases 0–3 implemented; native-module backfill complete (see
+`docs/TEST_BACKFILL_PLAN.md`) · **Date:** 2026-06-02 · **Owner:** QE
 **Companion decision:** see `docs/adr/ADR-001` on adopting Jest + RNTL.
+
+> **Update 2026-06-08:** the native-module wrappers previously excluded from
+> coverage (`trustedContacts`, `reminders`, `healthKit`/`healthKit.ios`,
+> `pulse`, `asset-cache`, `audio-engine`, `CrisisSheet`) are now mocked, tested,
+> and gated. `collectCoverageFrom` carries no native-module exclusions; the
+> suite is 211 tests / 24 suites. Details in `docs/TEST_BACKFILL_PLAN.md`.
 
 > Generated from an `/aqe-analyze` pass over `src/`. Originally greenfield (0
 > tests, no runner). **Phases 0–3 are now done:** `jest-expo` + RNTL wired up,

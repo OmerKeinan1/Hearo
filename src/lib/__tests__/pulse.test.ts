@@ -1,11 +1,25 @@
 import { renderHook, act } from "@testing-library/react-native";
 import { usePulse } from "@/lib/pulse";
 
+// Mock the HealthKit seam so we can drive both the mock path (isAvailable→false,
+// the default) and the real-HR path (isAvailable→true + injected samples).
+jest.mock("@/lib/healthKit", () => ({
+  isAvailable: jest.fn(),
+  subscribeHeartRate: jest.fn(),
+}));
+import * as healthKit from "@/lib/healthKit";
+
+const mockIsAvailable = jest.mocked(healthKit.isAvailable);
+const mockSubscribe = jest.mocked(healthKit.subscribeHeartRate);
+
 describe("usePulse", () => {
   beforeEach(() => {
     jest.useFakeTimers();
     // (0.5 - 0.5) * JITTER = 0 → deterministic, jitter-free movement.
     jest.spyOn(Math, "random").mockReturnValue(0.5);
+    // Default: no real HR source, so the hook uses its mock generator.
+    mockIsAvailable.mockResolvedValue(false);
+    mockSubscribe.mockReturnValue(() => {});
   });
 
   afterEach(() => {
@@ -63,5 +77,64 @@ describe("usePulse", () => {
     );
     unmount();
     expect(clearSpy).toHaveBeenCalled();
+  });
+
+  describe("real HR source", () => {
+    it("switches to the real source when HealthKit is available", async () => {
+      mockIsAvailable.mockResolvedValue(true);
+      let emit: (s: { bpm: number; timestamp: number }) => void = () => {};
+      mockSubscribe.mockImplementation((cb) => {
+        emit = cb;
+        return () => {};
+      });
+
+      const { result } = renderHook(() =>
+        usePulse({ active: true, phase: "baseline" }),
+      );
+      // Flush the mount effect's `await healthKit.isAvailable()`.
+      await act(async () => {});
+
+      expect(result.current.source).toBe("real");
+
+      act(() => emit({ bpm: 91, timestamp: Date.now() }));
+      expect(result.current.value).toBe(91);
+    });
+
+    it("falls back to mock after REAL_SILENCE_MS without a real sample", async () => {
+      mockIsAvailable.mockResolvedValue(true);
+      let emit: (s: { bpm: number; timestamp: number }) => void = () => {};
+      mockSubscribe.mockImplementation((cb) => {
+        emit = cb;
+        return () => {};
+      });
+
+      const { result } = renderHook(() =>
+        usePulse({ active: true, phase: "baseline" }),
+      );
+      await act(async () => {});
+      act(() => emit({ bpm: 100, timestamp: Date.now() }));
+      expect(result.current.source).toBe("real");
+
+      // No further samples for > 10s: the mock loop detects the silence and
+      // downgrades the source so the auto-soften logic can read it.
+      act(() => {
+        jest.advanceTimersByTime(11000);
+      });
+      expect(result.current.source).toBe("mock");
+    });
+
+    it("unsubscribes from HealthKit on unmount", async () => {
+      mockIsAvailable.mockResolvedValue(true);
+      const unsubscribe = jest.fn();
+      mockSubscribe.mockReturnValue(unsubscribe);
+
+      const { unmount } = renderHook(() =>
+        usePulse({ active: true, phase: "baseline" }),
+      );
+      await act(async () => {});
+      unmount();
+
+      expect(unsubscribe).toHaveBeenCalled();
+    });
   });
 });

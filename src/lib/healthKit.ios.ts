@@ -48,6 +48,10 @@ function callbackToPromise<T>(
 ): Promise<T> {
   return new Promise((resolve, reject) => {
     fn((err, result) => {
+      // istanbul ignore if: unreachable today — the sole caller (isAvailable)
+      // always invokes the callback with a null error, so this reject path and
+      // its message ternary never execute. Kept as defensive infrastructure.
+      /* istanbul ignore if */
       if (err) reject(new Error(typeof err === "string" ? err : "HealthKit error"));
       else resolve(result);
     });
@@ -113,6 +117,9 @@ export function subscribeHeartRate(
   let cancelled = false;
 
   const tick = () => {
+    // istanbul ignore next: defensive re-entry guard. unsubscribe() clears the
+    // interval, so a tick never fires after cancellation in practice; the inner
+    // post-callback guard below is the one that can actually race.
     if (cancelled) return;
     const options: HealthInputOptions = {
       startDate: new Date(lastEndDateMs).toISOString(),
