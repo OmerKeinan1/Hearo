@@ -1,19 +1,15 @@
 import { render, screen, fireEvent, waitFor } from "@testing-library/react-native";
 
-// expo-contacts uses an ES class that doesn't transpile cleanly in jest-expo
-// (the native module's superclass is undefined at test time → "Super expression
-// must either be null or a function"). The CrisisSheet only needs the contact
-// helpers to *exist* — none of these Tier-1 assertions exercise the picker —
-// so mock the module surface that lib/trustedContacts.ts imports.
-jest.mock("expo-contacts", () => ({
-  getPermissionsAsync: jest.fn().mockResolvedValue({ status: "undetermined" }),
-  requestPermissionsAsync: jest.fn().mockResolvedValue({ status: "denied" }),
-  getContactByIdAsync: jest.fn().mockResolvedValue(undefined),
-  getContactsAsync: jest.fn().mockResolvedValue({ data: [] }),
-  Fields: { Name: "Name", PhoneNumbers: "PhoneNumbers" },
-  SortTypes: { FirstName: "FirstName" },
-}));
+// expo-contacts is an ES-class native module that doesn't transpile under
+// jest-expo. Use the shared manual mock so the Tier-1 tests get a stub and the
+// picker-flow tests can drive granted permission + candidate lists per-test.
+jest.mock("expo-contacts", () =>
+  require("../../../test/mocks/expo-contacts"),
+);
 
+import AsyncStorage from "@react-native-async-storage/async-storage";
+
+import * as contactsMock from "../../../test/mocks/expo-contacts";
 import { CrisisSheet } from "../CrisisSheet";
 import { CRISIS_NUMBER, useCrisisStore } from "@/lib/crisis-store";
 
@@ -30,7 +26,9 @@ async function renderOpenSheet() {
 // tel: target is built from CRISIS_NUMBER on purpose — it stays a tripwire that
 // fails loudly if the hard-coded region number ever drifts.
 describe("CrisisSheet", () => {
-  beforeEach(() => {
+  beforeEach(async () => {
+    await AsyncStorage.clear();
+    contactsMock.__reset(); // defaults: permission granted, empty contact list
     useCrisisStore.setState({ isOpen: true });
   });
 
@@ -76,5 +74,55 @@ describe("CrisisSheet", () => {
       screen.getByText("Need someone\nto talk to\nright now?"),
     ).toBeTruthy();
     expect(screen.getByText("Free, 24/7,\nanonymous.")).toBeTruthy();
+  });
+
+  // ── Trusted-contact picker flow ──────────────────────────────────────────
+
+  it("opens the picker, lists candidates, and adds one to the trusted list", async () => {
+    contactsMock.getPermissionsAsync.mockResolvedValue({ status: "granted" });
+    contactsMock.getContactsAsync.mockResolvedValue({
+      data: [{ id: "c1", name: "Dana", phoneNumbers: [{ label: "mobile", number: "0501112222" }] }],
+    });
+    // resolveTrustedContacts() re-reads the picked contact from the OS after add.
+    contactsMock.getContactByIdAsync.mockResolvedValue({
+      name: "Dana",
+      phoneNumbers: [{ label: "mobile", number: "0501112222" }],
+    });
+
+    await renderOpenSheet();
+    fireEvent.press(screen.getByText("Add someone  +"));
+
+    // Picker view shows the candidate with its phone number.
+    await waitFor(() => expect(screen.getByText("0501112222")).toBeTruthy());
+    fireEvent.press(screen.getByText("Dana"));
+
+    // Back on the main view: Dana is now trusted (name only — the phone-bearing
+    // picker row is gone).
+    await waitFor(() => expect(screen.queryByText("0501112222")).toBeNull());
+    expect(screen.getByText("Dana")).toBeTruthy();
+  });
+
+  it("requests contacts permission before opening the picker when undetermined", async () => {
+    contactsMock.getPermissionsAsync.mockResolvedValue({ status: "undetermined" });
+    contactsMock.requestPermissionsAsync.mockResolvedValue({ status: "granted" });
+    contactsMock.getContactsAsync.mockResolvedValue({
+      data: [{ id: "c2", name: "Eli", phoneNumbers: [{ number: "0539998888" }] }],
+    });
+
+    await renderOpenSheet();
+    fireEvent.press(screen.getByText("Add someone  +"));
+
+    expect(contactsMock.requestPermissionsAsync).toHaveBeenCalledTimes(1);
+    await waitFor(() => expect(screen.getByText("0539998888")).toBeTruthy());
+  });
+
+  it("shows no trusted section or add button when permission is denied", async () => {
+    contactsMock.getPermissionsAsync.mockResolvedValue({ status: "denied" });
+
+    render(<CrisisSheet />);
+    // The hotline is always reachable...
+    await waitFor(() => expect(screen.getByText(/Call ERAN/)).toBeTruthy());
+    // ...but with contacts denied, the picker affordance is hidden.
+    expect(screen.queryByText("Add someone  +")).toBeNull();
   });
 });

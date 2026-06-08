@@ -22,28 +22,16 @@ module.exports = {
     "src/components/**/*.{ts,tsx}",
     "!src/lib/tokens.ts",
     "!src/lib/i18n.ts",
-    // TODO(test-backfill): native-module wrappers. Each needs a tailored jest
-    // mock for its underlying SDK before it can clear the 95/90 gate. Excluded
-    // here so unrelated PRs aren't blocked; tracking issue should backfill
-    // these with proper mocks for expo-contacts / expo-notifications /
-    // react-native-health / HealthKit.
-    "!src/lib/trustedContacts.ts",
-    "!src/lib/reminders.ts",
-    "!src/lib/healthKit.ts",
-    "!src/lib/healthKit.ios.ts",
-    "!src/lib/pulse.ts",
-    // Runtime integration modules: asset-cache wraps expo-file-system and
-    // audio-engine wraps react-native-audio-api. They need SDK-specific mocks
-    // before a per-file 95/90 coverage gate is meaningful.
-    "!src/lib/asset-cache.ts",
-    "!src/lib/audio-engine.ts",
-    // CrisisSheet renders the trusted-contact picker which transitively
-    // imports expo-contacts; coverage above the gate requires the same
-    // expo-contacts mock infrastructure tracked above.
-    "!src/components/CrisisSheet.tsx",
+    // All native-module wrappers are now backfilled and gated — see
+    // docs/TEST_BACKFILL_PLAN.md and test/mocks/ for the SDK mocks. No coverage
+    // exclusions remain beyond the config/constants files above.
   ],
   coverageThreshold: {
     // src/lib ratcheted to its ADR-001 final target. Glob key = per-file gate.
+    // healthKit.ios.ts clears this thanks to two `istanbul ignore` markers on
+    // provably-unreachable defensive branches (see that file for why). A
+    // per-file threshold key does NOT reliably override a `**` glob in this
+    // Jest version, so unreachable branches are annotated at the source instead.
     "./src/lib/**/*.{ts,tsx}": {
       lines: 95,
       branches: 90,
