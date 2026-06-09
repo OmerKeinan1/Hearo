@@ -18,6 +18,8 @@ const TRIGGER_CEILING_GAIN = dBToGain(TRIGGER_CEILING_DB);
 type Status = 'idle' | 'loading' | 'ambient' | 'scheduler' | 'spiked' | 'done';
 
 export default function AudioTestScreen() {
+  if (!__DEV__) return null;
+
   const engine = useAudioEngine();
   const [status, setStatus] = useState<Status>('idle');
   const [log, setLog] = useState<string[]>(['Ready.']);

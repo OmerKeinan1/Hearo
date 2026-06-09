@@ -12,7 +12,7 @@ import { PulseTicker } from "@/components/PulseTicker";
 import { SceneBackground } from "@/components/SceneBackground";
 import { VoiceLine } from "@/components/VoiceLine";
 import { useSessionStore } from "@/lib/session-store";
-import { getScene, getVoiceScript, localize, SceneKey, isPlaceholderSource, getAmbientTrack, getVoiceClips } from "@/lib/content";
+import { getScene, getVoiceScript, localize, SceneKey, isPlaceholderSource, getAmbientTrack, getVoiceClips, getSound } from "@/lib/content";
 import { dBToGain } from "@/lib/audio-engine";
 import { useCrisisStore } from "@/lib/crisis-store";
 import { fonts, tokens } from "@/lib/tokens";
@@ -144,6 +144,8 @@ export default function Session() {
   // Stores the dB ceiling for the active trigger sound so the intensity slider
   // can compute the correct peak gain without re-running the ADAPTIVE_LOOP effect.
   const triggerCeilingDbRef = useRef<number>(DEFAULT_CEILING_DB);
+  // Picked once at mount so LOADING (manifest) and DISCLAIMER (buffer load) use the same variation.
+  const selectedAmbientTrack = useRef(getAmbientTrack(scene));
 
   // ── Audio engine ───────────────────────────────────────────────────────
 
@@ -215,7 +217,7 @@ export default function Session() {
   useEffect(() => {
     if (machineState !== "LOADING") return;
 
-    const ambientTrack = getAmbientTrack(scene);
+    const ambientTrack = selectedAmbientTrack.current;
     const voiceClips = getVoiceClips();
 
     // Only include CDN assets (skip placeholders — no network call possible).
@@ -247,7 +249,7 @@ export default function Session() {
   useEffect(() => {
     if (machineState !== "DISCLAIMER") return;
 
-    const ambientTrack = getAmbientTrack(scene);
+    const ambientTrack = selectedAmbientTrack.current;
     const voiceClips = getVoiceClips();
     const disclaimerClip = voiceClips[0];
 
@@ -300,7 +302,6 @@ export default function Session() {
 
     // Pick a random variation from the consented sound's audioVariations.
     // TODO(supabase): sounds / sound_variations table supplies these.
-    const { getSound } = require("@/lib/content");
     const variations = getSound(sound).audioVariations as number[];
     const triggerSource = variations[Math.floor(Math.random() * variations.length)];
 

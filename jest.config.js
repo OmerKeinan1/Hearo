@@ -19,6 +19,7 @@ module.exports = {
   },
   collectCoverageFrom: [
     "src/lib/**/*.{ts,tsx}",
+    "src/hooks/**/*.{ts,tsx}",
     "src/components/**/*.{ts,tsx}",
     "!src/lib/tokens.ts",
     "!src/lib/i18n.ts",
@@ -33,6 +34,10 @@ module.exports = {
     // per-file threshold key does NOT reliably override a `**` glob in this
     // Jest version, so unreachable branches are annotated at the source instead.
     "./src/lib/**/*.{ts,tsx}": {
+      lines: 95,
+      branches: 90,
+    },
+    "./src/hooks/**/*.{ts,tsx}": {
       lines: 95,
       branches: 90,
     },
