@@ -162,10 +162,13 @@ describe("storage / psycho-education seen flag", () => {
   });
 });
 
-// B-01 scaffold: tri-state semantics matter. `undefined` (never asked) vs
-// `null` (explicitly declined) vs a Result record. No code path writes a
-// non-null record today.
+// B-01: PC-PTSD-5 outcome. Tri-state on the storage layer (undefined / null /
+// record); outcome enum on the record itself. The mild/moderate/severe model
+// from the original scaffold was replaced after the 2026-06-11 research
+// review — see add-clinical-screening proposal.
 describe("storage / clinical screening result", () => {
+  const VERSION = "pc-ptsd-5-v1-2026-06-11";
+
   beforeEach(async () => {
     await AsyncStorage.clear();
   });
@@ -179,19 +182,73 @@ describe("storage / clinical screening result", () => {
     expect(await getClinicalScreeningResult()).toBeNull();
   });
 
-  it("round-trips a full result record", async () => {
+  it("round-trips a no-trauma record (items not administered)", async () => {
     const record = {
-      band: "moderate" as const,
-      score: 42,
+      instrument: "pc-ptsd-5" as const,
+      version: VERSION,
+      traumaExposure: false,
+      answers: [],
+      score: 0,
+      cutoff: 3,
+      outcome: "no-trauma" as const,
       takenAt: 1_700_000_000_000,
-      version: "pcl5-v1",
     };
     await setClinicalScreeningResult(record);
     expect(await getClinicalScreeningResult()).toEqual(record);
   });
 
-  it("returns undefined when the persisted shape is malformed", async () => {
-    await AsyncStorage.setItem("hearo:clinicalScreeningResult", JSON.stringify({ band: "🤷" }));
+  it("round-trips a below-threshold record", async () => {
+    const record = {
+      instrument: "pc-ptsd-5" as const,
+      version: VERSION,
+      traumaExposure: true,
+      answers: [true, true, false, false, false],
+      score: 2,
+      cutoff: 3,
+      outcome: "below-threshold" as const,
+      takenAt: 1_700_000_000_000,
+    };
+    await setClinicalScreeningResult(record);
+    expect(await getClinicalScreeningResult()).toEqual(record);
+  });
+
+  it("round-trips an above-threshold record", async () => {
+    const record = {
+      instrument: "pc-ptsd-5" as const,
+      version: VERSION,
+      traumaExposure: true,
+      answers: [true, true, true, true, true],
+      score: 5,
+      cutoff: 3,
+      outcome: "above-threshold" as const,
+      takenAt: 1_700_000_000_000,
+    };
+    await setClinicalScreeningResult(record);
+    expect(await getClinicalScreeningResult()).toEqual(record);
+  });
+
+  it("returns undefined when the persisted shape is malformed (legacy band record)", async () => {
+    await AsyncStorage.setItem(
+      "hearo:clinicalScreeningResult",
+      JSON.stringify({ band: "moderate", score: 42, takenAt: 1, version: "old" }),
+    );
+    expect(await getClinicalScreeningResult()).toBeUndefined();
+  });
+
+  it("returns undefined when the persisted outcome is unknown", async () => {
+    await AsyncStorage.setItem(
+      "hearo:clinicalScreeningResult",
+      JSON.stringify({
+        instrument: "pc-ptsd-5",
+        version: VERSION,
+        traumaExposure: true,
+        answers: [false, false, false, false, false],
+        score: 0,
+        cutoff: 3,
+        outcome: "🤷",
+        takenAt: 1,
+      }),
+    );
     expect(await getClinicalScreeningResult()).toBeUndefined();
   });
 

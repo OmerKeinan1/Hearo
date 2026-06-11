@@ -116,18 +116,34 @@ export async function setPsychoEducationSeen(seen: boolean): Promise<void> {
   }
 }
 
-/** Clinical screening result. Tri-state on purpose:
+/** Clinical screening result (PC-PTSD-5, see add-clinical-screening change).
+ *  Storage tri-state:
  *  - `undefined`: never asked (default first-launch state).
  *  - `null`: explicitly declined / "prefer not to say".
- *  - Record: a completed screening with severity band + raw score + timestamp.
- *  Scaffold-only today (B-01) — no code path writes a non-null record yet.
- *  See `openspec/changes/add-clinical-screening/`. */
+ *  - Record: a completed screening.
+ *
+ *  The outcome is a two-band gate, not a severity gradient. The
+ *  `mild | moderate | severe` model used in the original scaffold was dropped
+ *  after the 2026-06-11 research review confirmed it is not VA-published. */
+export type ClinicalScreeningOutcome =
+  | "no-trauma"           // trauma-exposure question answered "no" — items not administered
+  | "below-threshold"     // score < cutoff — continue to self-guided
+  | "above-threshold";    // score >= cutoff — recommend clinician care (advisory, not blocking)
+
 export type ClinicalScreeningResult = {
-  band: "mild" | "moderate" | "severe";
-  score: number;
-  takenAt: number;
-  version: string;
+  instrument: "pc-ptsd-5";
+  version: string;            // e.g. "v1-2026-06-11" — bumps when wording / cutoff revised
+  traumaExposure: boolean;    // step 1 answer
+  answers: boolean[];         // length 5 when traumaExposure=true, [] when false
+  score: number;              // 0–5; 0 when traumaExposure=false
+  cutoff: number;             // currently 3 (Prins et al., 2016)
+  outcome: ClinicalScreeningOutcome;
+  takenAt: number;            // epoch ms
 };
+
+function isValidOutcome(value: unknown): value is ClinicalScreeningOutcome {
+  return value === "no-trauma" || value === "below-threshold" || value === "above-threshold";
+}
 
 export async function getClinicalScreeningResult(): Promise<ClinicalScreeningResult | null | undefined> {
   const raw = await AsyncStorage.getItem(KEYS.clinicalScreeningResult);
@@ -136,10 +152,15 @@ export async function getClinicalScreeningResult(): Promise<ClinicalScreeningRes
   try {
     const parsed = JSON.parse(raw) as ClinicalScreeningResult;
     if (
-      (parsed.band === "mild" || parsed.band === "moderate" || parsed.band === "severe") &&
+      parsed.instrument === "pc-ptsd-5" &&
+      typeof parsed.version === "string" &&
+      typeof parsed.traumaExposure === "boolean" &&
+      Array.isArray(parsed.answers) &&
+      parsed.answers.every((a) => typeof a === "boolean") &&
       typeof parsed.score === "number" &&
-      typeof parsed.takenAt === "number" &&
-      typeof parsed.version === "string"
+      typeof parsed.cutoff === "number" &&
+      isValidOutcome(parsed.outcome) &&
+      typeof parsed.takenAt === "number"
     ) {
       return parsed;
     }

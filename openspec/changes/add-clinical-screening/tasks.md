@@ -1,23 +1,41 @@
-## Status: scaffold only
+## 1. Storage shape
 
-This change ships the architecture (spec + storage shape + flow hook comment). The questionnaire UI and gating logic are blocked on Q-01 + Q-04 from Dr. Hirschman (see [`docs/backlog.md#3-open-clinical--legal-questions`](../../../docs/backlog.md#3-open-clinical--legal-questions)). Implementation tasks (§2 onward) are listed as a forward-looking checklist but are NOT done in this change.
+- [x] 1.1 Add `ClinicalScreeningResult` type + getter/setter to `src/lib/storage/storage.ts`. (Done in scaffold; reshape below.)
+- [x] 1.2 Reshape `ClinicalScreeningResult` from the old band model (`band: "mild" | "moderate" | "severe"`) to the PC-PTSD-5 outcome model: `{ instrument: "pc-ptsd-5"; version: string; traumaExposure: boolean; answers: boolean[] (length 5); score: number (0–5); cutoff: number; outcome: "no-trauma" | "below-threshold" | "above-threshold"; takenAt: number }`.
+- [x] 1.3 Update storage tests for the new shape — round-trip each outcome (no-trauma / below-threshold / above-threshold) + the tri-state semantics on the storage layer (`undefined` = never asked, `null` = declined, record = answered).
 
-## 1. Architecture (this change)
+## 2. Content
 
-- [x] 1.1 Add `ClinicalScreeningResult` type + `getClinicalScreeningResult()` / `setClinicalScreeningResult()` to `src/lib/storage/storage.ts`. Result shape: `{ band: "mild" | "moderate" | "severe"; score: number; takenAt: number; version: string } | null` (null = explicit decline to answer; undefined = never asked).
-- [x] 1.2 Unit-test the round-trip + the undefined-vs-null distinction in `src/lib/storage/__tests__/storage.test.ts`.
-- [x] 1.3 Add `// TODO(B-01)` comment in `src/app/permissions.tsx` at the point where the screening route would hook in (right before the route to `/setup`), referencing this change and the blocking questions.
-- [x] 1.4 `npx -y @fission-ai/openspec validate add-clinical-screening` passes.
+- [x] 2.1 Add `PcPtsd5Content` type and `getClinicalScreening()` getter in `src/lib/content/content.ts`. Include: intro copy + trauma-exposure question + 5 PC-PTSD-5 items + outcome screen copy (both below- and above-threshold).
+- [x] 2.2 Author EN content verbatim from the VA's official PC-PTSD-5 PDF (public domain).
+- [x] 2.3 Author draft HE translation, every item commented `TODO(hirschman-review)`.
+- [x] 2.4 Unit-test the getter: exactly 5 items, both languages populated, score-keying matches the form layout.
 
-## 2. Implementation (BLOCKED — separate future change)
+## 3. Research doc
 
-These are written here so the next implementer doesn't restart from zero. They land in a separate openspec change `implement-clinical-screening` once Q-01 + Q-04 are answered.
+- [x] 3.1 Add `docs/research/clinical-screening-review.md` documenting the instrument decision, cutoff rationale, scoring methodology, and verified sources from the literature scan.
 
-- [ ] 2.1 **BLOCKED on Q-01.** Decide screening instrument. Default candidate: PCL-5 (20 items, validated, public domain). Alternative: Hirschman-authored short-form.
-- [ ] 2.2 **BLOCKED on Q-01.** Define severity bands (cutoff scores).
-- [ ] 2.3 **BLOCKED on Q-04.** Decide whether `severe` band hard-blocks autonomous use or merely surfaces a referral with a "continue anyway" option. Hirschman's call.
-- [ ] 2.4 Implement `/screening` route. UI: one question per screen, progress dots, no back-button after the first question (questionnaire research suggests this reduces gaming the answer set).
-- [ ] 2.5 On completion: compute band, persist via `setClinicalScreeningResult`, branch based on band.
-- [ ] 2.6 Insert `/screening` in the onboarding flow at the point marked by `TODO(B-01)` in `permissions.tsx`.
-- [ ] 2.7 Build the severe-band routing UI: "we recommend Mativ" card + deep-link (G-01).
-- [ ] 2.8 Document the screening tool + threshold rationale in `docs/research/clinical-screening.md` with attribution to Hirschman + cited literature.
+## 4. Screening flow
+
+- [x] 4.1 Create `src/components/features/screening/PcPtsd5Form.tsx` — the 5-item yes/no form. Vertical list, yes/no toggle each, Submit at bottom (disabled until all 5 answered).
+- [x] 4.2 Create `src/app/screening.tsx` — 3-screen flow:
+  - Step 1: intro copy + trauma-exposure yes/no.
+  - Step 2: PC-PTSD-5 form (only if step 1 = yes).
+  - Step 3: outcome — below-threshold continues, above-threshold shows clinician recommendation + Mativ placeholder + continue-anyway link.
+- [x] 4.3 Scoring logic: sum `true` answers (each yes = 1), cutoff at ≥ 3 = above-threshold. If trauma-exposure = no → outcome = `no-trauma` (score = 0, cutoff irrelevant).
+- [x] 4.4 Persist via `setClinicalScreeningResult` at the point the outcome is computed (start of step 3, before render).
+- [x] 4.5 Crisis affordance in top-left of every screen, same as every other route.
+
+## 5. Onboarding wire-in
+
+- [x] 5.1 In `src/app/permissions.tsx`, replace the `TODO(B-01)` comment with the real gate: if `getClinicalScreeningResult() === undefined`, route to `/screening`; otherwise route to `/setup` as today.
+
+## 6. i18n
+
+- [x] 6.1 Add `screening.*` keys to `src/lib/ui/i18n.ts` for the screen-level copy (button labels, progress text, outcome titles). Item content + intro prose comes from `getClinicalScreening()`, not i18n — the bilingual content adapter owns its own translations.
+
+## 7. Verification
+
+- [x] 7.1 `npx tsc --noEmit` clean.
+- [x] 7.2 `npx jest` — all suites pass, coverage thresholds hold. New tests for storage shape, content getter, scoring at boundaries (score=2 below, score=3 above, score=5 above), no-trauma path.
+- [x] 7.3 `npx -y @fission-ai/openspec validate add-clinical-screening` passes.

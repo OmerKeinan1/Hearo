@@ -9,6 +9,7 @@ import { CrisisAffordance } from "@/components/features/crisis/CrisisAffordance"
 import { Icon } from "@/components/common/Icon";
 import * as healthKit from "@/lib/integrations/healthKit";
 import * as reminders from "@/lib/integrations/reminders";
+import { getClinicalScreeningResult } from "@/lib/storage/storage";
 import { fonts, tokens } from "@/lib/ui/tokens";
 
 type Status = "idle" | "granted" | "denied";
@@ -240,12 +241,21 @@ export default function Permissions() {
           {t("permissions.privacy")}
         </Text>
 
-        {/* TODO(B-01): once Q-01 and Q-04 are resolved (see docs/backlog.md
-            and openspec/changes/add-clinical-screening/), insert a route to
-            "/screening" here on first launch — between Permissions and Setup.
-            Today this remains a direct route to /setup. */}
+        {/* B-01: clinical screening gate. First-launch users (no stored
+            screening result) go through PC-PTSD-5 before Setup; returning
+            users skip the questionnaire. The screening route itself routes
+            back to /setup (any outcome) — Above-threshold users see a
+            clinician-recommendation card first, but it's advisory, not a
+            block. See openspec/changes/add-clinical-screening/. */}
         <Pressable
-          onPress={() => router.push("/setup")}
+          onPress={async () => {
+            const prior = await getClinicalScreeningResult();
+            if (prior === undefined) {
+              router.push("/screening");
+            } else {
+              router.push("/setup");
+            }
+          }}
           hitSlop={8}
           style={{ paddingBottom: 16, opacity: canContinue ? 1 : 0.4 }}
         >
