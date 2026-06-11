@@ -7,6 +7,7 @@ Long-form documentation for HearO. Each file has YAML front-matter with tags and
 | Doc | Tags | Audience | One-liner |
 |---|---|---|---|
 | [`prd.md`](./prd.md) | `product`, `scope`, `requirements` | everyone | Product requirements: scope, core loop, success criteria, references back to clinical and design docs. |
+| [`backlog.md`](./backlog.md) | `product`, `scope`, `planning`, `clinical` | everyone, product | Running feature backlog (post-Hirschman pivot): clinical screening, psycho-ed, calming protocol, companion mode (demoted to Tier 2), regulatory questions, sprint allocation. |
 | [`RATIONALE.md`](./RATIONALE.md) | `clinical`, `product`, `persona`, `research` | everyone, clinician | Why the product is shaped the way it is. Exposure-therapy literature, persona constraints, what HearO is *not*. |
 | [`FRONTEND.md`](./FRONTEND.md) | `design`, `ui`, `screen-specs`, `frontend-dev` | frontend-dev, designer | Palette, typography, motion, screen-by-screen ASCII mockups, crisis-sheet pattern, RTL and bilingual implementation. |
 | [`CONVENTIONS.md`](./CONVENTIONS.md) | `code`, `conventions`, `stack`, `frontend-dev` | frontend-dev | Tech stack, folder structure, hooks pattern, state management rules, Supabase typed-client workflow, day-one feature checklist. |
