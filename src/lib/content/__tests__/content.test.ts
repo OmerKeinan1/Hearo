@@ -10,6 +10,8 @@ import {
   getVoiceClips,
   getPsychoEducation,
   getCalmingProtocol,
+  getClinicalScreening,
+  computeClinicalScreeningOutcome,
   isPlaceholderSource,
   SCENE_ORDER,
   SOUND_ORDER,
@@ -200,5 +202,77 @@ describe("content / calming protocol", () => {
         expect(s.durationMs).toBeGreaterThan(0);
       }
     }
+  });
+});
+
+// B-01: PC-PTSD-5. Item text in EN is verbatim from VA's official PDF, so
+// these tests assert shape + length + presence, not specific wording.
+describe("content / clinical screening (PC-PTSD-5)", () => {
+  it("exposes intro, trauma-exposure prompt, 5 items, and three outcome screens in both languages", () => {
+    const c = getClinicalScreening();
+    expect(c.version.length).toBeGreaterThan(0);
+    expect(c.cutoff).toBe(3);
+
+    expect(c.intro.eyebrow.en.length).toBeGreaterThan(0);
+    expect(c.intro.eyebrow.he.length).toBeGreaterThan(0);
+    expect(c.intro.heading.en.length).toBeGreaterThan(0);
+    expect(c.intro.heading.he.length).toBeGreaterThan(0);
+    expect(c.intro.body.en.length).toBeGreaterThan(0);
+    expect(c.intro.body.he.length).toBeGreaterThan(0);
+
+    expect(c.traumaExposure.prompt.en.length).toBeGreaterThan(0);
+    expect(c.traumaExposure.prompt.he.length).toBeGreaterThan(0);
+
+    expect(c.items.questions).toHaveLength(5);
+    for (const q of c.items.questions) {
+      expect(q.en.length).toBeGreaterThan(0);
+      expect(q.he.length).toBeGreaterThan(0);
+    }
+
+    expect(c.outcomes.noTrauma.heading.en.length).toBeGreaterThan(0);
+    expect(c.outcomes.belowThreshold.heading.en.length).toBeGreaterThan(0);
+    expect(c.outcomes.aboveThreshold.heading.en.length).toBeGreaterThan(0);
+    expect(c.outcomes.aboveThreshold.mativLabel.en.length).toBeGreaterThan(0);
+  });
+});
+
+describe("content / computeClinicalScreeningOutcome", () => {
+  it("returns no-trauma + score 0 when traumaExposure is false (items irrelevant)", () => {
+    expect(computeClinicalScreeningOutcome(false, [], 3)).toEqual({
+      score: 0,
+      outcome: "no-trauma",
+    });
+    // Even if answers were provided (they shouldn't be), no-trauma wins.
+    expect(computeClinicalScreeningOutcome(false, [true, true, true, true, true], 3)).toEqual({
+      score: 0,
+      outcome: "no-trauma",
+    });
+  });
+
+  it("returns below-threshold for score < cutoff", () => {
+    expect(
+      computeClinicalScreeningOutcome(true, [false, false, false, false, false], 3),
+    ).toEqual({ score: 0, outcome: "below-threshold" });
+    expect(
+      computeClinicalScreeningOutcome(true, [true, false, false, false, false], 3),
+    ).toEqual({ score: 1, outcome: "below-threshold" });
+    expect(
+      computeClinicalScreeningOutcome(true, [true, true, false, false, false], 3),
+    ).toEqual({ score: 2, outcome: "below-threshold" });
+  });
+
+  it("returns above-threshold at exactly the cutoff (boundary case for the gate)", () => {
+    expect(
+      computeClinicalScreeningOutcome(true, [true, true, true, false, false], 3),
+    ).toEqual({ score: 3, outcome: "above-threshold" });
+  });
+
+  it("returns above-threshold for score > cutoff", () => {
+    expect(
+      computeClinicalScreeningOutcome(true, [true, true, true, true, false], 3),
+    ).toEqual({ score: 4, outcome: "above-threshold" });
+    expect(
+      computeClinicalScreeningOutcome(true, [true, true, true, true, true], 3),
+    ).toEqual({ score: 5, outcome: "above-threshold" });
   });
 });

@@ -570,3 +570,210 @@ const CALMING_PROTOCOL: CalmingProtocolStep[] = [
 export function getCalmingProtocol(): CalmingProtocolStep[] {
   return CALMING_PROTOCOL;
 }
+
+// ── Clinical screening (PC-PTSD-5) ──────────────────────────────────────────
+//
+// Primary Care PTSD Screen for DSM-5 (Prins et al., 2016). Public domain,
+// distributed by the VA National Center for PTSD. EN item text is verbatim
+// from the official PDF. HE items are draft forward-translations, every one
+// marked TODO(hirschman-review) — DO NOT release a Hebrew-locale build until
+// Dr. Hirschman has signed off on these strings.
+//
+// Cutoff at score ≥ 3 (sens .95, spec .85; Prins et al., 2016) — used by
+// /screening to gate above-threshold users into a clinician-recommendation
+// outcome screen. See docs/research/clinical-screening-review.md.
+
+export type PcPtsd5Content = {
+  /** Version tag bumped whenever the wording or cutoff changes. Persisted on
+   *  every screening result so old records can be detected if the instrument
+   *  is later revised. */
+  version: string;
+  cutoff: number;
+  intro: {
+    eyebrow: LocalizedText;
+    heading: LocalizedText;
+    body: LocalizedText;
+  };
+  /** Step 1 — trauma-exposure gate. "Yes" administers the 5 items; "No"
+   *  short-circuits to the no-trauma outcome. */
+  traumaExposure: {
+    prompt: LocalizedText;
+    yes: LocalizedText;
+    no: LocalizedText;
+  };
+  /** Step 2 — the 5 PC-PTSD-5 items, asked over the past month after a
+   *  user-affirmed traumatic event. */
+  items: {
+    instructions: LocalizedText;
+    yes: LocalizedText;
+    no: LocalizedText;
+    submit: LocalizedText;
+    /** Item text. Order matches the official VA PDF (questions 1–5). */
+    questions: LocalizedText[];
+  };
+  outcomes: {
+    noTrauma: { heading: LocalizedText; body: LocalizedText; continueLabel: LocalizedText };
+    belowThreshold: { heading: LocalizedText; body: LocalizedText; continueLabel: LocalizedText };
+    aboveThreshold: {
+      heading: LocalizedText;
+      body: LocalizedText;
+      mativLabel: LocalizedText;
+      continueLabel: LocalizedText;
+    };
+  };
+};
+
+// TODO(supabase): `pc_ptsd5_content` table keyed by version + lang.
+const CLINICAL_SCREENING: PcPtsd5Content = {
+  version: "pc-ptsd-5-v1-2026-06-11",
+  cutoff: 3,
+  intro: {
+    eyebrow: {
+      en: "A quick check-in",
+      // TODO(hirschman-review): HE draft pending clinical review.
+      he: "כמה שאלות לפני שמתחילים",
+    },
+    heading: {
+      en: "Five short questions\nbefore we begin.",
+      // TODO(hirschman-review)
+      he: "חמש שאלות קצרות\nלפני שמתחילים.",
+    },
+    body: {
+      en: "These help us understand what's right for you, and whether we should suggest talking to someone alongside the app. Your answers stay on this device.",
+      // TODO(hirschman-review)
+      he: "השאלות האלה עוזרות לנו להבין מה מתאים לך, ואם כדאי שנציע גם לדבר עם מישהו במקביל לאפליקציה. התשובות שלך נשארות במכשיר הזה.",
+    },
+  },
+  traumaExposure: {
+    // EN text is paraphrased from the VA PC-PTSD-5 intro (the official wording
+    // is a long enumeration of trauma examples; we condense for mobile while
+    // preserving the clinical content). The 5 symptom items below are verbatim.
+    prompt: {
+      en: "Sometimes things happen to people that are unusually frightening, horrible, or traumatic — a serious accident, a physical or sexual assault, war, seeing someone hurt or killed, losing a loved one to violence.\n\nHave you ever experienced something like that?",
+      // TODO(hirschman-review)
+      he: "לפעמים קורים לאנשים דברים מפחידים, נוראיים או טראומטיים במיוחד — תאונה חמורה, תקיפה גופנית או מינית, מלחמה, ראייה של מישהו שנפצע או נהרג, אובדן של אדם אהוב באלימות.\n\nהאם אי פעם חווית משהו כזה?",
+    },
+    yes: { en: "Yes", he: "כן" },
+    no: { en: "No", he: "לא" },
+  },
+  items: {
+    instructions: {
+      en: "In the past month, have you…",
+      // TODO(hirschman-review)
+      he: "בחודש האחרון, האם…",
+    },
+    yes: { en: "Yes", he: "כן" },
+    no: { en: "No", he: "לא" },
+    submit: {
+      en: "Done",
+      // TODO(hirschman-review)
+      he: "סיום",
+    },
+    // VA PC-PTSD-5 items, verbatim EN. HE drafted from the source.
+    questions: [
+      {
+        en: "Had nightmares about the event(s), or thought about the event(s) when you did not want to?",
+        // TODO(hirschman-review)
+        he: "היו לך סיוטים על האירוע, או חשבת עליו כשלא רצית?",
+      },
+      {
+        en: "Tried hard not to think about the event(s), or went out of your way to avoid situations that reminded you of the event(s)?",
+        // TODO(hirschman-review)
+        he: "השתדלת מאוד לא לחשוב על האירוע, או הלכת רחוק מדרכך כדי להימנע ממצבים שהזכירו לך אותו?",
+      },
+      {
+        en: "Been constantly on guard, watchful, or easily startled?",
+        // TODO(hirschman-review)
+        he: "היית כל הזמן בכוננות, ערני, או נבהלת בקלות?",
+      },
+      {
+        en: "Felt numb or detached from people, activities, or your surroundings?",
+        // TODO(hirschman-review)
+        he: "הרגשת חוסר תחושה או ניתוק מאנשים, מפעילויות או מהסביבה שלך?",
+      },
+      {
+        en: "Felt guilty or unable to stop blaming yourself or others for the event(s) or any problems the event(s) may have caused?",
+        // TODO(hirschman-review)
+        he: "הרגשת אשמה, או לא הצלחת להפסיק להאשים את עצמך או אחרים בגלל האירוע או הבעיות שנגרמו ממנו?",
+      },
+    ],
+  },
+  outcomes: {
+    noTrauma: {
+      heading: {
+        en: "Thanks for that.",
+        // TODO(hirschman-review)
+        he: "תודה.",
+      },
+      body: {
+        en: "Let's get you set up.",
+        // TODO(hirschman-review)
+        he: "בוא נכין את ההגדרות שלך.",
+      },
+      continueLabel: {
+        en: "Continue",
+        // TODO(hirschman-review)
+        he: "המשך",
+      },
+    },
+    belowThreshold: {
+      heading: {
+        en: "Thanks for that.",
+        // TODO(hirschman-review)
+        he: "תודה.",
+      },
+      body: {
+        en: "Based on what you've shared, the practice you'll find here should be a good fit. If anything changes, you can come back to this check-in from Settings.",
+        // TODO(hirschman-review)
+        he: "לפי מה ששיתפת, התרגול שכאן אמור להתאים לך. אם משהו ישתנה, תוכל לחזור לבדיקה הזו דרך ההגדרות.",
+      },
+      continueLabel: {
+        en: "Continue",
+        // TODO(hirschman-review)
+        he: "המשך",
+      },
+    },
+    aboveThreshold: {
+      heading: {
+        en: "You don't need to\ndo this alone.",
+        // TODO(hirschman-review)
+        he: "אתה לא חייב\nלעשות את זה לבד.",
+      },
+      body: {
+        en: "What you've shared sounds like something a conversation with someone trained in trauma could really help with. We work with the Mativ Institute and can put you in touch. The app is here either way — you can use it on its own, or alongside that support.",
+        // TODO(hirschman-review)
+        he: "מה ששיתפת נשמע כמו משהו ששיחה עם איש מקצוע מאומן בטראומה יכולה לעזור איתו. אנחנו עובדים עם מכון מטיב ויכולים לחבר ביניכם. האפליקציה תהיה כאן בכל מקרה — תוכל להשתמש בה בנפרד, או לצד התמיכה הזו.",
+      },
+      mativLabel: {
+        en: "Connect with Mativ",
+        // TODO(hirschman-review)
+        he: "התחבר עם מטיב",
+      },
+      continueLabel: {
+        en: "Continue to the app",
+        // TODO(hirschman-review)
+        he: "המשך לאפליקציה",
+      },
+    },
+  },
+};
+
+// TODO(supabase): `supabase.from('pc_ptsd5_content').select('*').eq('version', '...').single()`
+export function getClinicalScreening(): PcPtsd5Content {
+  return CLINICAL_SCREENING;
+}
+
+/** Compute the PC-PTSD-5 outcome from raw step-1 + step-2 answers. Pure
+ *  function; the route calls this before persisting + rendering step 3. */
+export function computeClinicalScreeningOutcome(
+  traumaExposure: boolean,
+  answers: boolean[],
+  cutoff: number,
+): { score: number; outcome: "no-trauma" | "below-threshold" | "above-threshold" } {
+  if (!traumaExposure) {
+    return { score: 0, outcome: "no-trauma" };
+  }
+  const score = answers.filter(Boolean).length;
+  const outcome = score >= cutoff ? "above-threshold" : "below-threshold";
+  return { score, outcome };
+}
