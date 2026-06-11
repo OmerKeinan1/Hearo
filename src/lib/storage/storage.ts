@@ -14,6 +14,8 @@ const KEYS = {
   reminderSchedule: `${PREFIX}reminderSchedule`,
   trustedContactIds: `${PREFIX}trustedContactIds`,
   healthKitGranted: `${PREFIX}healthKitGranted`,
+  psychoEducationSeen: `${PREFIX}psychoEducationSeen`,
+  clinicalScreeningResult: `${PREFIX}clinicalScreeningResult`,
 } as const;
 
 /** A name we've resolved (or explicitly determined we can't resolve) for the
@@ -94,5 +96,65 @@ export async function setHealthKitGranted(granted: boolean): Promise<void> {
     await AsyncStorage.setItem(KEYS.healthKitGranted, "true");
   } else {
     await AsyncStorage.removeItem(KEYS.healthKitGranted);
+  }
+}
+
+/** Whether the user has seen the first-session psycho-education screen.
+ *  Boolean — defaults to `false` (never seen). Two-state, no tri-state needed:
+ *  the screen has no meaningful "tried-and-skipped" case. The Setup screen's
+ *  re-read link does not reset this to `false`. */
+export async function getPsychoEducationSeen(): Promise<boolean> {
+  const raw = await AsyncStorage.getItem(KEYS.psychoEducationSeen);
+  return raw === "true";
+}
+
+export async function setPsychoEducationSeen(seen: boolean): Promise<void> {
+  if (seen) {
+    await AsyncStorage.setItem(KEYS.psychoEducationSeen, "true");
+  } else {
+    await AsyncStorage.removeItem(KEYS.psychoEducationSeen);
+  }
+}
+
+/** Clinical screening result. Tri-state on purpose:
+ *  - `undefined`: never asked (default first-launch state).
+ *  - `null`: explicitly declined / "prefer not to say".
+ *  - Record: a completed screening with severity band + raw score + timestamp.
+ *  Scaffold-only today (B-01) — no code path writes a non-null record yet.
+ *  See `openspec/changes/add-clinical-screening/`. */
+export type ClinicalScreeningResult = {
+  band: "mild" | "moderate" | "severe";
+  score: number;
+  takenAt: number;
+  version: string;
+};
+
+export async function getClinicalScreeningResult(): Promise<ClinicalScreeningResult | null | undefined> {
+  const raw = await AsyncStorage.getItem(KEYS.clinicalScreeningResult);
+  if (raw === null) return undefined;
+  if (raw === "declined") return null;
+  try {
+    const parsed = JSON.parse(raw) as ClinicalScreeningResult;
+    if (
+      (parsed.band === "mild" || parsed.band === "moderate" || parsed.band === "severe") &&
+      typeof parsed.score === "number" &&
+      typeof parsed.takenAt === "number" &&
+      typeof parsed.version === "string"
+    ) {
+      return parsed;
+    }
+    return undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+export async function setClinicalScreeningResult(
+  result: ClinicalScreeningResult | null,
+): Promise<void> {
+  if (result === null) {
+    await AsyncStorage.setItem(KEYS.clinicalScreeningResult, "declined");
+  } else {
+    await AsyncStorage.setItem(KEYS.clinicalScreeningResult, JSON.stringify(result));
   }
 }

@@ -240,6 +240,10 @@ export default function Permissions() {
           {t("permissions.privacy")}
         </Text>
 
+        {/* TODO(B-01): once Q-01 and Q-04 are resolved (see docs/backlog.md
+            and openspec/changes/add-clinical-screening/), insert a route to
+            "/screening" here on first launch — between Permissions and Setup.
+            Today this remains a direct route to /setup. */}
         <Pressable
           onPress={() => router.push("/setup")}
           hitSlop={8}
