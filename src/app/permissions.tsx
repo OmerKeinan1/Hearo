@@ -5,11 +5,11 @@ import DateTimePicker, { DateTimePickerEvent } from "@react-native-community/dat
 import { useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
 
-import { CrisisAffordance } from "@/components/CrisisAffordance";
-import { Icon } from "@/components/Icon";
-import * as healthKit from "@/lib/healthKit";
-import * as reminders from "@/lib/reminders";
-import { fonts, tokens } from "@/lib/tokens";
+import { CrisisAffordance } from "@/components/features/crisis/CrisisAffordance";
+import { Icon } from "@/components/common/Icon";
+import * as healthKit from "@/lib/integrations/healthKit";
+import * as reminders from "@/lib/integrations/reminders";
+import { fonts, tokens } from "@/lib/ui/tokens";
 
 type Status = "idle" | "granted" | "denied";
 

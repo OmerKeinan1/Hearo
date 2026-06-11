@@ -3,12 +3,12 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
 
-import { CrisisAffordance } from "@/components/CrisisAffordance";
-import { Icon } from "@/components/Icon";
-import { SceneCarousel } from "@/components/SceneCarousel";
-import { getSounds, localize } from "@/lib/content";
-import { useSessionStore } from "@/lib/session-store";
-import { fonts, tokens } from "@/lib/tokens";
+import { CrisisAffordance } from "@/components/features/crisis/CrisisAffordance";
+import { Icon } from "@/components/common/Icon";
+import { SceneCarousel } from "@/components/features/setup/SceneCarousel";
+import { getSounds, localize } from "@/lib/content/content";
+import { useSessionStore } from "@/lib/storage/session-store";
+import { fonts, tokens } from "@/lib/ui/tokens";
 
 const SOUNDS = getSounds();
 

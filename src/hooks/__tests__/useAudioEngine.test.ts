@@ -23,11 +23,11 @@ const mockEngine = {
   isBurstActive: false,
 };
 
-jest.mock("@/lib/audio-engine", () => ({
+jest.mock("@/lib/audio/audio-engine", () => ({
   AudioEngine: jest.fn(() => mockEngine),
   dBToGain: jest.fn((db: number) => Math.pow(10, db / 20)),
 }));
-import { AudioEngine } from "@/lib/audio-engine";
+import { AudioEngine } from "@/lib/audio/audio-engine";
 const MockAudioEngine = jest.mocked(AudioEngine);
 
 describe("useAudioEngine", () => {

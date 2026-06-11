@@ -129,7 +129,7 @@ Six screens in the demo path (settings/profile is post-demo polish). Layout sket
 
 - **Monolithic frontend** (React Native + Expo SDK 54, managed) talking **directly to Supabase** for persistence/auth. No Node/Express service layer; there is no REST API — the **Supabase schema is the data contract**.
 - Persistent data (profile, scene selection, session history, intensity-ceiling memory) → Supabase client. Local-only (UI state, in-session pulse curve, audio engine, breathing animation) stays on device.
-- **Content seam:** [`src/lib/content.ts`](../src/lib/content.ts) is the adapter where local fallback data is replaced by Supabase reads when the schema lands. Migration sites marked `TODO(supabase)`.
+- **Content seam:** [`src/lib/content/content.ts`](../src/lib/content/content.ts) is the adapter where local fallback data is replaced by Supabase reads when the schema lands. Migration sites marked `TODO(supabase)`.
 - **Privacy boundary:** the HealthKit pulse stream stays on-device and is never posted to Supabase unless the user explicitly shares a session. Crisis taps are never logged. Row-Level Security is the auth boundary (client-side user-ID filters are UX hints, not security).
 - Stack details, folder structure, hooks/state/forms/i18n conventions, and current-state-vs-aspiration in [`CONVENTIONS.md`](./CONVENTIONS.md).
 
@@ -174,7 +174,7 @@ Longer-term product metrics (post-demo, currently aspirational): session complet
 Out of frontend scope to create, in scope to integrate (until they land, screens use silence stubs):
 - **Ambient loops** (~6 min): `river-path`, `city-evening`, `cafe-morning`, `quiet-road`.
 - **Trigger clips** (~3–5s): `motorcycle`, `helicopter`, `fireworks`, `siren`, `car-backfire`, `shouting`.
-- **Voice narration** (EN + HE): ~12–15 lines per scene, two scripts per scene (calm + post-trigger calming). Source text in [`../voice-scripts/`](../voice-scripts/).
+- **Voice narration** (EN + HE): ~12–15 lines per scene, two scripts per scene (calm + post-trigger calming). Source text in [`./voice-scripts/`](./voice-scripts/).
 - **Fonts:** Frank Ruhl Libre, Heebo.
 
 ---
@@ -186,5 +186,5 @@ Out of frontend scope to create, in scope to integrate (until they land, screens
 - [`FRONTEND.md`](./FRONTEND.md) — palette, type, motion, screen specs, RTL.
 - [`CONVENTIONS.md`](./CONVENTIONS.md) — tech stack, folder structure, code conventions.
 - [`../openspec/specs/`](../openspec/) — binding capability requirements (Given/When/Then).
-- [`../voice-scripts/`](../voice-scripts/) — per-scene voice narration source (EN + HE).
+- [`./voice-scripts/`](./voice-scripts/) — per-scene voice narration source (EN + HE).
 </content>

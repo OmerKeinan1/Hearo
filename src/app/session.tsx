@@ -4,21 +4,21 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
 
-import { BreathingCircle } from "@/components/BreathingCircle";
-import { CrisisAffordance } from "@/components/CrisisAffordance";
-import { Icon } from "@/components/Icon";
-import { IntensitySlider } from "@/components/IntensitySlider";
-import { PulseTicker } from "@/components/PulseTicker";
-import { SceneBackground } from "@/components/SceneBackground";
-import { VoiceLine } from "@/components/VoiceLine";
-import { useSessionStore } from "@/lib/session-store";
-import { getScene, getVoiceScript, localize, SceneKey, isPlaceholderSource, getAmbientTrack, getVoiceClips, getSound } from "@/lib/content";
-import { dBToGain } from "@/lib/audio-engine";
-import { useCrisisStore } from "@/lib/crisis-store";
-import { fonts, tokens } from "@/lib/tokens";
+import { BreathingCircle } from "@/components/features/session/BreathingCircle";
+import { CrisisAffordance } from "@/components/features/crisis/CrisisAffordance";
+import { Icon } from "@/components/common/Icon";
+import { IntensitySlider } from "@/components/features/session/IntensitySlider";
+import { PulseTicker } from "@/components/features/session/PulseTicker";
+import { SceneBackground } from "@/components/features/session/SceneBackground";
+import { VoiceLine } from "@/components/features/session/VoiceLine";
+import { useSessionStore } from "@/lib/storage/session-store";
+import { getScene, getVoiceScript, localize, SceneKey, isPlaceholderSource, getAmbientTrack, getVoiceClips, getSound } from "@/lib/content/content";
+import { dBToGain } from "@/lib/audio/audio-engine";
+import { useCrisisStore } from "@/lib/storage/crisis-store";
+import { fonts, tokens } from "@/lib/ui/tokens";
 import { useAudioEngine } from "@/hooks/useAudioEngine";
 import { usePulseMonitor, SessionState } from "@/hooks/usePulseMonitor";
-import { ensureAssets, AssetManifest } from "@/lib/asset-cache";
+import { ensureAssets, AssetManifest } from "@/lib/audio/asset-cache";
 import { PostSessionFeedback, FeedbackAnswers } from "@/components/features/post-session";
 
 // ── Constants ────────────────────────────────────────────────────────────

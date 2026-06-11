@@ -3,13 +3,13 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
 
-import { CrisisAffordance } from "@/components/CrisisAffordance";
-import { Icon } from "@/components/Icon";
-import { getScene, getSound, localize } from "@/lib/content";
-import { useDisplayName } from "@/lib/displayName";
-import { useSessionStore } from "@/lib/session-store";
-import { getTimeOfDay } from "@/lib/timeOfDay";
-import { fonts, tokens } from "@/lib/tokens";
+import { CrisisAffordance } from "@/components/features/crisis/CrisisAffordance";
+import { Icon } from "@/components/common/Icon";
+import { getScene, getSound, localize } from "@/lib/content/content";
+import { useDisplayName } from "@/lib/ui/displayName";
+import { useSessionStore } from "@/lib/storage/session-store";
+import { getTimeOfDay } from "@/lib/ui/timeOfDay";
+import { fonts, tokens } from "@/lib/ui/tokens";
 
 export default function Home() {
   const router = useRouter();

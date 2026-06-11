@@ -4,8 +4,8 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
 
-import { CrisisAffordance } from "@/components/CrisisAffordance";
-import { fonts, tokens } from "@/lib/tokens";
+import { CrisisAffordance } from "@/components/features/crisis/CrisisAffordance";
+import { fonts, tokens } from "@/lib/ui/tokens";
 
 type Reflection = "stillHere" | "shaken" | "steady";
 
