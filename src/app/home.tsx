@@ -8,6 +8,7 @@ import { Icon } from "@/components/common/Icon";
 import { getScene, getSound, localize } from "@/lib/content/content";
 import { useDisplayName } from "@/lib/ui/displayName";
 import { useSessionStore } from "@/lib/storage/session-store";
+import { getPsychoEducationSeen } from "@/lib/storage/storage";
 import { getTimeOfDay } from "@/lib/ui/timeOfDay";
 import { fonts, tokens } from "@/lib/ui/tokens";
 
@@ -106,7 +107,14 @@ export default function Home() {
 
         <View className="pb-2">
           <Pressable
-            onPress={() => router.push({ pathname: "/session", params: { scene } })}
+            onPress={async () => {
+              const seen = await getPsychoEducationSeen();
+              if (seen) {
+                router.push({ pathname: "/session", params: { scene } });
+              } else {
+                router.push({ pathname: "/psychoed", params: { scene } });
+              }
+            }}
             hitSlop={8}
             style={{
               borderWidth: 1,
@@ -129,9 +137,25 @@ export default function Home() {
         </View>
 
         <Pressable
+          onPress={() => router.push("/calming")}
+          hitSlop={8}
+          style={{ alignSelf: "center", paddingTop: 8, paddingBottom: 4 }}
+        >
+          <Text
+            style={{
+              color: tokens.textMute,
+              fontFamily: fonts.body,
+              fontSize: 14,
+            }}
+          >
+            {t("home.needAMoment")}
+          </Text>
+        </Pressable>
+
+        <Pressable
           onPress={() => router.push("/setup")}
           hitSlop={8}
-          style={{ alignSelf: "center", paddingVertical: 18 }}
+          style={{ alignSelf: "center", paddingVertical: 14 }}
         >
           <Text
             style={{

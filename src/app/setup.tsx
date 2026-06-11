@@ -147,6 +147,22 @@ export default function Setup() {
               <Icon name="arrow-right" size={20} color={tokens.accent} />
             </View>
           </Pressable>
+
+          <Pressable
+            onPress={() => router.push("/psychoed")}
+            hitSlop={8}
+            style={{ paddingTop: 24, paddingBottom: 4 }}
+          >
+            <Text
+              style={{
+                color: tokens.textMute,
+                fontFamily: fonts.body,
+                fontSize: 14,
+              }}
+            >
+              {t("setup.rereadIntro")}
+            </Text>
+          </Pressable>
         </View>
       </ScrollView>
     </SafeAreaView>

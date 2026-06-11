@@ -11,6 +11,10 @@ import {
   setTrustedContactIds,
   getHealthKitGranted,
   setHealthKitGranted,
+  getPsychoEducationSeen,
+  setPsychoEducationSeen,
+  getClinicalScreeningResult,
+  setClinicalScreeningResult,
 } from "@/lib/storage/storage";
 
 // Tri-state semantics under test: `undefined` (never tried) vs `null` (tried,
@@ -131,5 +135,68 @@ describe("storage / healthkit granted flag", () => {
     await setHealthKitGranted(false);
     expect(await getHealthKitGranted()).toBe(false);
     expect(await AsyncStorage.getItem("hearo:healthKitGranted")).toBeNull();
+  });
+});
+
+// B-02: gates the first-session psycho-education screen. Boolean — no
+// tri-state. The Setup re-read link does NOT reset this.
+describe("storage / psycho-education seen flag", () => {
+  beforeEach(async () => {
+    await AsyncStorage.clear();
+  });
+
+  it("defaults to false (never seen)", async () => {
+    expect(await getPsychoEducationSeen()).toBe(false);
+  });
+
+  it("setPsychoEducationSeen(true) persists the flag", async () => {
+    await setPsychoEducationSeen(true);
+    expect(await getPsychoEducationSeen()).toBe(true);
+  });
+
+  it("setPsychoEducationSeen(false) clears the flag", async () => {
+    await setPsychoEducationSeen(true);
+    await setPsychoEducationSeen(false);
+    expect(await getPsychoEducationSeen()).toBe(false);
+    expect(await AsyncStorage.getItem("hearo:psychoEducationSeen")).toBeNull();
+  });
+});
+
+// B-01 scaffold: tri-state semantics matter. `undefined` (never asked) vs
+// `null` (explicitly declined) vs a Result record. No code path writes a
+// non-null record today.
+describe("storage / clinical screening result", () => {
+  beforeEach(async () => {
+    await AsyncStorage.clear();
+  });
+
+  it("returns undefined when never asked", async () => {
+    expect(await getClinicalScreeningResult()).toBeUndefined();
+  });
+
+  it("setClinicalScreeningResult(null) persists the declined state", async () => {
+    await setClinicalScreeningResult(null);
+    expect(await getClinicalScreeningResult()).toBeNull();
+  });
+
+  it("round-trips a full result record", async () => {
+    const record = {
+      band: "moderate" as const,
+      score: 42,
+      takenAt: 1_700_000_000_000,
+      version: "pcl5-v1",
+    };
+    await setClinicalScreeningResult(record);
+    expect(await getClinicalScreeningResult()).toEqual(record);
+  });
+
+  it("returns undefined when the persisted shape is malformed", async () => {
+    await AsyncStorage.setItem("hearo:clinicalScreeningResult", JSON.stringify({ band: "🤷" }));
+    expect(await getClinicalScreeningResult()).toBeUndefined();
+  });
+
+  it("returns undefined when the stored value isn't JSON", async () => {
+    await AsyncStorage.setItem("hearo:clinicalScreeningResult", "not-json-not-declined");
+    expect(await getClinicalScreeningResult()).toBeUndefined();
   });
 });

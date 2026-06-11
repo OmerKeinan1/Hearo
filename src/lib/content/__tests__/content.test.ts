@@ -8,6 +8,8 @@ import {
   getDefaultPreferences,
   getAmbientTrack,
   getVoiceClips,
+  getPsychoEducation,
+  getCalmingProtocol,
   isPlaceholderSource,
   SCENE_ORDER,
   SOUND_ORDER,
@@ -118,6 +120,85 @@ describe("content / session audio sources", () => {
       expect(clip.label.en.length).toBeGreaterThan(0);
       expect(clip.label.he.length).toBeGreaterThan(0);
       expect(isPlaceholderSource(clip.source)).toBe(true);
+    }
+  });
+});
+
+// B-02: the psycho-ed screen reads from this getter. Asserts the content
+// shape AND that both languages are populated (the EN translation drift
+// against HE source is the regression risk).
+describe("content / psycho-education", () => {
+  it("exposes eyebrow, heading, body, and continueLabel in both languages", () => {
+    const p = getPsychoEducation();
+    expect(p.eyebrow.en.length).toBeGreaterThan(0);
+    expect(p.eyebrow.he.length).toBeGreaterThan(0);
+    expect(p.heading.en.length).toBeGreaterThan(0);
+    expect(p.heading.he.length).toBeGreaterThan(0);
+    expect(p.continueLabel.en.length).toBeGreaterThan(0);
+    expect(p.continueLabel.he.length).toBeGreaterThan(0);
+  });
+
+  it("has at least four body paragraphs (the Hirschman source has five)", () => {
+    const p = getPsychoEducation();
+    expect(p.body.length).toBeGreaterThanOrEqual(4);
+    for (const para of p.body) {
+      expect(para.en.length).toBeGreaterThan(0);
+      expect(para.he.length).toBeGreaterThan(0);
+    }
+  });
+});
+
+// B-03 v1: the calming protocol is a 5-step user-initiated regulation flow.
+// Order and shape are load-bearing — wrong step order or missing prompts
+// would break the orchestrator that drives the screen.
+describe("content / calming protocol", () => {
+  it("returns exactly five steps in the documented order", () => {
+    const steps = getCalmingProtocol();
+    expect(steps.map((s) => s.kind)).toEqual([
+      "validation",
+      "body-grounding",
+      "box-breathing",
+      "sensory-grounding",
+      "close",
+    ]);
+  });
+
+  it("box-breathing has 2 cycles × 4 phases at 4s each — matches Hirschman doc", () => {
+    const steps = getCalmingProtocol();
+    const boxBreathing = steps.find((s) => s.kind === "box-breathing");
+    if (boxBreathing?.kind !== "box-breathing") {
+      throw new Error("box-breathing step missing");
+    }
+    expect(boxBreathing.cycles).toBe(2);
+    expect(boxBreathing.phaseMs).toBe(4_000);
+    expect(boxBreathing.prompts.inhale.en.length).toBeGreaterThan(0);
+    expect(boxBreathing.prompts.inhale.he.length).toBeGreaterThan(0);
+    expect(boxBreathing.prompts.hold.en.length).toBeGreaterThan(0);
+    expect(boxBreathing.prompts.exhale.en.length).toBeGreaterThan(0);
+  });
+
+  it("sensory-grounding has three sub-steps in 3 → 2 → 1 order", () => {
+    const steps = getCalmingProtocol();
+    const sensory = steps.find((s) => s.kind === "sensory-grounding");
+    if (sensory?.kind !== "sensory-grounding") {
+      throw new Error("sensory-grounding step missing");
+    }
+    expect(sensory.steps.map((s) => s.count)).toEqual([3, 2, 1]);
+    for (const sub of sensory.steps) {
+      expect(sub.prompt.en.length).toBeGreaterThan(0);
+      expect(sub.prompt.he.length).toBeGreaterThan(0);
+      expect(sub.durationMs).toBeGreaterThan(0);
+    }
+  });
+
+  it("prose steps (validation/body/close) have content in both languages", () => {
+    const steps = getCalmingProtocol();
+    for (const s of steps) {
+      if (s.kind === "validation" || s.kind === "body-grounding" || s.kind === "close") {
+        expect(s.text.en.length).toBeGreaterThan(0);
+        expect(s.text.he.length).toBeGreaterThan(0);
+        expect(s.durationMs).toBeGreaterThan(0);
+      }
     }
   });
 });

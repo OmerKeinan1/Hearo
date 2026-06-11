@@ -9,7 +9,11 @@ describe("session-store", () => {
 
   beforeEach(() => {
     defaults = getDefaultPreferences();
-    useSessionStore.setState({ scene: defaults.scene, sounds: defaults.sounds });
+    useSessionStore.setState({
+      scene: defaults.scene,
+      sounds: defaults.sounds,
+      lastEndedBy: null,
+    });
   });
 
   it("initializes from default preferences", () => {
@@ -39,5 +43,25 @@ describe("session-store", () => {
     useSessionStore.setState({ sounds: ["siren", "motorcycle"] });
     useSessionStore.getState().toggleSound("siren");
     expect(useSessionStore.getState().sounds).toEqual(["motorcycle"]);
+  });
+
+  // B-03: telemetry seam for session-end pathway distinction. Today this
+  // doesn't surface in the After screen; it's the contract for future
+  // analytics + the calming-protocol exit can be detected from `null`.
+  describe("lastEndedBy", () => {
+    it("defaults to null (no session has ended in this app session)", () => {
+      expect(useSessionStore.getState().lastEndedBy).toBeNull();
+    });
+
+    it("setLastEndedBy persists the value", () => {
+      useSessionStore.getState().setLastEndedBy("calming-protocol");
+      expect(useSessionStore.getState().lastEndedBy).toBe("calming-protocol");
+    });
+
+    it("setLastEndedBy overwrites prior value", () => {
+      useSessionStore.getState().setLastEndedBy("natural");
+      useSessionStore.getState().setLastEndedBy("manual-exit");
+      expect(useSessionStore.getState().lastEndedBy).toBe("manual-exit");
+    });
   });
 });
