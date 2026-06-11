@@ -12,9 +12,9 @@ import {
 } from "@expo-google-fonts/frank-ruhl-libre";
 import { Heebo_400Regular, Heebo_500Medium } from "@expo-google-fonts/heebo";
 
-import { CrisisSheet } from "@/components/CrisisSheet";
-import { isRTL } from "@/lib/i18n";
-import { configureNotificationHandler, reassertSchedule } from "@/lib/reminders";
+import { CrisisSheet } from "@/components/features/crisis/CrisisSheet";
+import { isRTL } from "@/lib/ui/i18n";
+import { configureNotificationHandler, reassertSchedule } from "@/lib/integrations/reminders";
 
 SplashScreen.preventAutoHideAsync().catch(() => {});
 

@@ -2,10 +2,10 @@ import { renderHook, act } from "@testing-library/react-native";
 import { usePulseMonitor, SessionState, PulseMonitorResult } from "@/hooks/usePulseMonitor";
 
 // Control the BPM value the hook sees without running the real pulse logic.
-jest.mock("@/lib/pulse", () => ({
+jest.mock("@/lib/integrations/pulse", () => ({
   usePulse: jest.fn(),
 }));
-import { usePulse } from "@/lib/pulse";
+import { usePulse } from "@/lib/integrations/pulse";
 const mockUsePulse = jest.mocked(usePulse);
 
 function setPulse(value: number) {

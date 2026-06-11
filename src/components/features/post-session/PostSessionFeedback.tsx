@@ -7,7 +7,7 @@ import { useState, useCallback } from "react";
 import { Pressable, Text, TextInput, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useTranslation } from "react-i18next";
-import { fonts, tokens } from "@/lib/tokens";
+import { fonts, tokens } from "@/lib/ui/tokens";
 
 export interface FeedbackAnswers {
   difficulty: 1 | 2 | 3 | 4 | 5 | null;

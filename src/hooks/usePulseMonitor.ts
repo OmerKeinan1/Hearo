@@ -9,7 +9,7 @@
 //   - BLE disconnect: no readings for 8 s → watchConnected = false
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { usePulse, PulsePhase } from '@/lib/pulse';
+import { usePulse, PulsePhase } from '@/lib/integrations/pulse';
 
 export type SessionState =
   | 'LOADING'

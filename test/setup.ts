@@ -28,8 +28,8 @@ jest.mock("expo-localization", () => ({
 
 // Initialize i18n once so useTranslation() resolves real keys. The mocked
 // device locale starts in English; keep it pinned there for copy assertions.
-import i18n from "@/lib/i18n";
-import { useCrisisStore } from "@/lib/crisis-store";
+import i18n from "@/lib/ui/i18n";
+import { useCrisisStore } from "@/lib/storage/crisis-store";
 
 beforeAll(async () => {
   await i18n.changeLanguage("en");

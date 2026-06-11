@@ -5,9 +5,7 @@
 The user must always be able to make the trigger sound softer — without the app being able to override them in the other direction. Two control layers run in parallel: a manual slider the user drags during a session, and an automatic pulse-driven attenuation that reacts to the user's body. Both layers can only make the trigger softer, never louder. They cooperate by treating the manual slider as a ceiling the automatic layer cannot exceed.
 
 This is a safety capability as much as a UX one. The whole exposure model rests on the user trusting that they remain in control.
-
 ## Requirements
-
 ### Requirement: Slider is always visible and reachable
 The manual intensity slider MUST be visible and reachable on the session screen during all three phases. The slider MUST support drag gestures with smooth continuous motion (not stepped).
 
@@ -23,29 +21,26 @@ The manual intensity slider MUST be visible and reachable on the session screen 
 - AND the trigger sound output (if playing) follows the position in real time
 
 ### Requirement: Slider controls trigger volume only
-The manual slider MUST affect only the trigger sound volume. Ambient soundscape and voice playback MUST be unaffected by slider movement.
+The manual slider MUST affect only the trigger sound volume via `TriggerGainNode`. `AmbientGainNode` and `VoiceGainNode` MUST be unaffected by slider movement.
 
 #### Scenario: Drag does not affect ambient
-- GIVEN the session is playing the river ambient soundscape
-- WHEN the user drags the slider to the softest position
-- THEN the river ambient continues at full volume
-- AND only the trigger sound (if currently playing) responds
+- **WHEN** the user drags the slider to the softest position during `ADAPTIVE_LOOP`
+- **THEN** the ambient soundscape continues at gain 1.0
+- **AND** only `TriggerGainNode.gain` ceiling is updated
 
 ### Requirement: Slider is a ceiling, not a fixed level
-The slider position MUST represent the maximum volume the app is allowed to play the trigger at. Actual output MAY be lower (from automatic attenuation) but MUST NEVER exceed the slider's position.
+The slider position MUST represent the maximum gain value the engine is allowed to apply to `TriggerGainNode`. The engine's automatic HR-spike response MAY lower `TriggerGainNode.gain` below the ceiling but MUST NEVER set it above the slider's position.
 
-#### Scenario: Automatic attenuation respects ceiling
-- GIVEN the slider is at 0.6 and the user's pulse crosses the calming threshold
-- WHEN the automatic attenuation engages
-- THEN the trigger sound output drops to around 0.3
-- AND the slider thumb stays at 0.6
-- AND a ghost indicator appears on the slider at the actual output position
+#### Scenario: HR spike response respects ceiling
+- **WHEN** the slider is at 0.6 and `PulseSpiked` is emitted
+- **THEN** `TriggerGainNode.gain` fades toward 0 (below the 0.6 ceiling)
+- **AND** the slider thumb stays at 0.6
+- **AND** a ghost indicator shows the actual gain position on the track
 
-#### Scenario: Pulse normalizes within ceiling
-- GIVEN the slider is at 0.6 with automatic attenuation holding output at 0.3
-- WHEN the user's pulse drops below the calming threshold
-- THEN the trigger output ramps back toward 0.6 over 4 seconds
-- AND output never exceeds 0.6
+#### Scenario: Recovery ramp respects ceiling
+- **WHEN** `PulseNormalized` is emitted after a spike with slider at 0.6
+- **THEN** `TriggerGainNode.gain` ramps back toward 0.6 (the pre-spike level, which is ≤ the slider ceiling)
+- **AND** gain never exceeds 0.6
 
 ### Requirement: No numeric labels on the slider
 The slider MUST NOT display numeric labels, percentages, or step indicators. Only the textual endpoints `Softer` and `Louder` MAY be shown.
@@ -83,3 +78,4 @@ The slider MUST NOT have a position labeled "off" or "mute". Pulling the slider 
 - WHEN a trigger sound plays
 - THEN the trigger plays at a very low audible volume
 - AND it is not muted to silence
+

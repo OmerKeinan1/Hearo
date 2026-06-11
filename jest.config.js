@@ -21,8 +21,8 @@ module.exports = {
     "src/lib/**/*.{ts,tsx}",
     "src/hooks/**/*.{ts,tsx}",
     "src/components/**/*.{ts,tsx}",
-    "!src/lib/tokens.ts",
-    "!src/lib/i18n.ts",
+    "!src/lib/ui/tokens.ts",
+    "!src/lib/ui/i18n.ts",
     // All native-module wrappers are now backfilled and gated — see
     // docs/TEST_BACKFILL_PLAN.md and test/mocks/ for the SDK mocks. No coverage
     // exclusions remain beyond the config/constants files above.

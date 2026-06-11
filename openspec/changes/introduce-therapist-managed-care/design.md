@@ -81,7 +81,7 @@ Alternative considered: instant self-verify (anyone calling themselves a therapi
 
 Three things hold the privacy line:
 
-1. **Trusted contacts never touch the backend.** There is no `trusted_contacts` table. The data stays in `lib/storage.ts` on-device only. RLS can't help here because the data isn't in the DB at all.
+1. **Trusted contacts never touch the backend.** There is no `trusted_contacts` table. The data stays in `lib/storage/storage.ts` on-device only. RLS can't help here because the data isn't in the DB at all.
 2. **Crisis-sheet taps never reach the backend.** No `crisis_events` table, no telemetry endpoint that logs the tap. Existing crisis-access spec's no-logging guarantee continues to hold by construction.
 3. **RLS on every readable table.** Patients can only `SELECT` rows where `patient_id = auth.uid()`. Therapists can only `SELECT` patient rows where there's an active `therapist_patients` row linking them, AND only the columns the spec allows (we use Postgres views to hide sensitive columns rather than relying on `SELECT` listing discipline in the client).
 
