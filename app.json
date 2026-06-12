@@ -15,7 +15,6 @@
     "userInterfaceStyle": "automatic",
     "ios": {
       "bundleIdentifier": "com.techheal.hearo",
-      "icon": "./assets/expo.icon",
       "config": {
         "usesNonExemptEncryption": false
       },
@@ -31,7 +30,7 @@
     "android": {
       "adaptiveIcon": {
         "backgroundColor": "#161E33",
-        "foregroundImage": "./assets/images/android-icon-foreground.png",
+        "foregroundImage": "./assets/images/icon.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
       "predictiveBackGestureEnabled": false,
