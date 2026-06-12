@@ -232,7 +232,7 @@ describe("content / clinical screening (PC-PTSD-5)", () => {
     expect(c.outcomes.noTrauma.heading.en.length).toBeGreaterThan(0);
     expect(c.outcomes.belowThreshold.heading.en.length).toBeGreaterThan(0);
     expect(c.outcomes.aboveThreshold.heading.en.length).toBeGreaterThan(0);
-    expect(c.outcomes.aboveThreshold.mativLabel.en.length).toBeGreaterThan(0);
+    expect(c.outcomes.aboveThreshold.continueLabel.en.length).toBeGreaterThan(0);
   });
 });
 

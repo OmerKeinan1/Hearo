@@ -304,31 +304,11 @@ function AboveThresholdOutcome({ lang, onContinue }: { lang: string; onContinue:
           {localize(c.body, lang)}
         </Text>
 
-        {/* Mativ referral — disabled placeholder until G-01 lands. The
-            affordance is rendered so the user knows the pathway exists,
-            but pressing it today is a no-op (opacity reduced to read as
-            "not yet available" rather than "broken"). */}
-        <Pressable
-          onPress={() => {
-            /* TODO(G-01): deep-link to Mativ referral landing page once the
-               partnership is signed and the URL exists. Today: no-op. */
-          }}
-          accessibilityRole="link"
-          hitSlop={8}
-          style={{
-            borderWidth: 1,
-            borderColor: tokens.textMute,
-            borderRadius: 999,
-            paddingVertical: 14,
-            alignItems: "center",
-            marginBottom: 16,
-            opacity: 0.5,
-          }}
-        >
-          <Text style={{ color: tokens.text, fontFamily: fonts.body, fontSize: 16 }}>
-            {localize(c.mativLabel, lang)}
-          </Text>
-        </Pressable>
+        {/* G-01: the Mativ deep-link button lands with the partnership.
+            Until then, no affordance — referring without a real destination
+            is a no-op the user would tap and be confused by. The body copy
+            above already says "we work with the Mativ Institute and can put
+            you in touch", which carries the message without a dead button. */}
       </View>
 
       <Pressable
