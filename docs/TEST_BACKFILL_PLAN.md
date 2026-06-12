@@ -27,7 +27,7 @@ Final per-file coverage (lines / branches):
 | `CrisisSheet.tsx` | 93.8% | 80% | picker flow added; comfortably clears the components 70/70 aggregate |
 
 New SDK mocks live in `test/mocks/`: `expo-contacts`, `expo-notifications`,
-`expo-file-system-legacy`, `react-native-health`, `react-native-audio-api`.
+`expo-file-system-legacy`, `react-native-healthkit`, `react-native-audio-api`.
 
 ⚠️ **Plan correction (§5 escape hatch):** a per-file `coverageThreshold` key
 does **not** reliably override a `**` glob threshold in this Jest version — the
@@ -54,7 +54,7 @@ three reasons, all the same root cause — **an unmocked native module**:
 | 3 | `src/lib/reminders.ts` | 85 | `expo-notifications` | no |
 | 4 | `src/lib/pulse.ts` | 97 | `./healthKit` (real-HR branch only) | **yes — mock path only** |
 | 5 | `src/lib/asset-cache.ts` | 159 | `expo-file-system/legacy` | no |
-| 6 | `src/lib/healthKit.ios.ts` | 143 | `react-native-health` | no |
+| 6 | `src/lib/healthKit.ios.ts` | 143 | `@kingstinct/react-native-healthkit` | no |
 | 7 | `src/lib/audio-engine.ts` | 375 | `react-native-audio-api` | no |
 | 8 | `src/components/CrisisSheet.tsx` | 419 | `expo-contacts` (transitive, picker only) | **yes — main view + call path only** |
 
@@ -106,10 +106,10 @@ there, since the logic suites must stay native-free and fast.
 |---|---|---|
 | `expo-contacts` | `getPermissionsAsync`, `requestPermissionsAsync`, `getContactByIdAsync`, `getContactsAsync`, `Fields`, `SortTypes` | ES-class native module → **must** be manually mocked (`"Super expression must…"` if not). Shape already proven in `CrisisSheet.test.tsx:8`. |
 | `expo-notifications` | `setNotificationHandler`, `get/requestPermissionsAsync`, `schedule/cancelScheduledNotificationAsync`, `SchedulableTriggerInputTypes.DAILY` | `PermissionStatus` is a *type* (erased) — mock only needs the runtime fns + the `SchedulableTriggerInputTypes` enum. |
-| `react-native-health` | `Constants.Permissions.HeartRate` (read at module load!), `initHealthKit`, `isAvailable`, `getHeartRateSamples` | Callback-style. Mock must expose `Constants.Permissions.HeartRate` or the `READ_PERMISSIONS` const throws on import. |
+| `@kingstinct/react-native-healthkit` | `isHealthDataAvailable`, `requestAuthorization`, `queryQuantitySamples` | Promise-style. Mock the named exports used by the adapter and keep the mock object stable across `jest.resetModules()`. |
 | `expo-file-system/legacy` | `cacheDirectory`, `getInfoAsync`, `makeDirectoryAsync`, `readAsStringAsync`, `writeAsStringAsync`, `downloadAsync`, `deleteAsync` | Mock the **`/legacy` subpath** exactly. `cacheDirectory` is read at module load → provide a string. |
 | `react-native-audio-api` | `AudioContext` (→ `createGain`, `createBufferSource`, `decodeAudioData`, `suspend`/`resume`/`close`, `currentTime`, `state`, `destination`); `GainNode.gain` (→ `value`, `cancelScheduledValues`, `cancelAndHoldAtTime`, `setValueAtTime`, `linearRampToValueAtTime`) | Largest mock. Gain nodes need a `value` that survives ramp calls so assertions can read it. |
-| `@/lib/healthKit` | `isAvailable`, `subscribeHeartRate` | For `pulse.ts` only — mock the *seam*, not `react-native-health`, to drive the real-HR branch. |
+| `@/lib/healthKit` | `isAvailable`, `subscribeHeartRate` | For `pulse.ts` only — mock the app-owned adapter, not the vendor package, to drive the real-HR branch. |
 
 ---
 
@@ -139,7 +139,7 @@ Establishes `test/mocks/` and clears 4 of 8 files fast.
 ### Phase 6 — HealthKit iOS + CrisisSheet picker (hardest)
 | File | Mock | Key assertions | Est. tests |
 |---|---|---|---:|
-| `healthKit.ios.ts` | `react-native-health` + fake timers + `jest.setSystemTime` | `ensureInit` dedupes concurrent callers + persists granted; `isAvailable` false-fast vs init; `getAuthorizationStatus` sticky-flag path; `subscribeHeartRate` polls at `POLL_MS`, dedupes by `endDate`, rounds bpm, cancels cleanly | 10–12 |
+| `healthKit.ios.ts` | `@kingstinct/react-native-healthkit` + fake timers + `jest.setSystemTime` | `ensureInit` dedupes concurrent callers + persists granted; `isAvailable` false-fast vs authorization; `getAuthorizationStatus` sticky-flag path; `subscribeHeartRate` polls at `POLL_MS`, dedupes by `endDate`, rounds bpm, cancels cleanly | 10–12 |
 | `CrisisSheet.tsx` | `expo-contacts` (reuse Phase-4 factory) | **Add to existing suite:** `onAddSomeone` permission-request flow; picker renders candidates (already-trusted filtered out); `onPickContact` adds + returns to main; cap defense at `MAX_CONTACTS`; denied-permission explanation copy | +6–8 |
 
 → Import `healthKit.ios.ts` **directly** (`../healthKit.ios`) rather than

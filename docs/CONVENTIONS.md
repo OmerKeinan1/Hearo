@@ -206,7 +206,7 @@ Rules:
 
 Some native modules cannot run in Expo Go. They require entitlements, native pods, or both, and only show up in a custom development build:
 
-- **`react-native-health`** (HealthKit) — needs the HealthKit entitlement + a paired Apple Watch to read real samples. Expo Go can't grant entitlements.
+- **`@kingstinct/react-native-healthkit`** (HealthKit) — needs the HealthKit entitlement + a paired Apple Watch to read real samples. Expo Go can't grant entitlements.
 - Anything else that adds a config-plugin which mutates `Info.plist`, the entitlements file, or the Podfile.
 
 Cut a dev build with:

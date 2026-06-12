@@ -336,7 +336,7 @@ State                Zustand
 Fonts                @expo-google-fonts/frank-ruhl-libre,
                      @expo-google-fonts/heebo
 Audio                expo-av
-Health data          react-native-health (HealthKit)
+Health data          @kingstinct/react-native-healthkit (HealthKit)
 i18n                 i18next + react-i18next
 Animation            react-native-reanimated
 Localization         expo-localization

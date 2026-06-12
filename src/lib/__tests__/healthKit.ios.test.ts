@@ -1,6 +1,12 @@
-// Stable AppleHealthKit mock object (survives the per-test jest.resetModules()).
-const mockAHK = require("../../../test/mocks/react-native-health").createAppleHealthKitMock();
-jest.mock("react-native-health", () => ({ __esModule: true, default: mockAHK }));
+// Stable HealthKit mock object (survives the per-test jest.resetModules()).
+const mockHealthKit = require("../../../test/mocks/react-native-healthkit")
+  .createReactNativeHealthKitMock();
+jest.mock("@kingstinct/react-native-healthkit", () => ({
+  __esModule: true,
+  isHealthDataAvailable: mockHealthKit.isHealthDataAvailable,
+  queryQuantitySamples: mockHealthKit.queryQuantitySamples,
+  requestAuthorization: mockHealthKit.requestAuthorization,
+}));
 
 // Control the sticky-granted storage flag directly (no AsyncStorage needed).
 const mockGetGranted = jest.fn();
@@ -16,9 +22,9 @@ let hk: HealthKitIos;
 beforeEach(() => {
   // Fresh module each test → resets `initialized` / `initPromise`.
   jest.resetModules();
-  mockAHK.isAvailable.mockReset();
-  mockAHK.initHealthKit.mockReset();
-  mockAHK.getHeartRateSamples.mockReset();
+  mockHealthKit.isHealthDataAvailable.mockReset();
+  mockHealthKit.queryQuantitySamples.mockReset();
+  mockHealthKit.requestAuthorization.mockReset();
   mockGetGranted.mockReset().mockResolvedValue(false);
   mockSetGranted.mockReset().mockResolvedValue(undefined);
   // Importing by the explicit `.ios` filename keeps resolution deterministic.
@@ -27,28 +33,31 @@ beforeEach(() => {
 
 describe("healthKit.ios / isAvailable", () => {
   it("returns false when HealthKit reports unavailable", async () => {
-    mockAHK.isAvailable.mockImplementation((cb: any) => cb(null, false));
+    mockHealthKit.isHealthDataAvailable.mockReturnValue(false);
     expect(await hk.isAvailable()).toBe(false);
-    expect(mockAHK.initHealthKit).not.toHaveBeenCalled();
+    expect(mockHealthKit.requestAuthorization).not.toHaveBeenCalled();
   });
 
   it("initializes and returns true when available", async () => {
-    mockAHK.isAvailable.mockImplementation((cb: any) => cb(null, true));
-    mockAHK.initHealthKit.mockImplementation((_perms: any, cb: any) => cb(null));
+    mockHealthKit.isHealthDataAvailable.mockReturnValue(true);
+    mockHealthKit.requestAuthorization.mockResolvedValue(true);
 
     expect(await hk.isAvailable()).toBe(true);
+    expect(mockHealthKit.requestAuthorization).toHaveBeenCalledWith({
+      toRead: ["HKQuantityTypeIdentifierHeartRate"],
+    });
     expect(mockSetGranted).toHaveBeenCalledWith(true);
   });
 
-  it("returns false when init fails even though HealthKit is available", async () => {
-    mockAHK.isAvailable.mockImplementation((cb: any) => cb(null, true));
-    mockAHK.initHealthKit.mockImplementation((_perms: any, cb: any) => cb("init denied"));
+  it("returns false when authorization fails even though HealthKit is available", async () => {
+    mockHealthKit.isHealthDataAvailable.mockReturnValue(true);
+    mockHealthKit.requestAuthorization.mockResolvedValue(false);
 
     expect(await hk.isAvailable()).toBe(false);
   });
 
   it("swallows a thrown native error and returns false", async () => {
-    mockAHK.isAvailable.mockImplementation(() => {
+    mockHealthKit.isHealthDataAvailable.mockImplementation(() => {
       throw new Error("native boom");
     });
     expect(await hk.isAvailable()).toBe(false);
@@ -56,27 +65,29 @@ describe("healthKit.ios / isAvailable", () => {
 });
 
 describe("healthKit.ios / requestAuthorization", () => {
-  it("returns granted when init succeeds", async () => {
-    mockAHK.initHealthKit.mockImplementation((_perms: any, cb: any) => cb(null));
+  it("returns granted when authorization succeeds", async () => {
+    mockHealthKit.requestAuthorization.mockResolvedValue(true);
     expect(await hk.requestAuthorization()).toBe("granted");
   });
 
-  it("returns denied when init fails", async () => {
-    mockAHK.initHealthKit.mockImplementation((_perms: any, cb: any) => cb("nope"));
+  it("returns denied when authorization fails", async () => {
+    mockHealthKit.requestAuthorization.mockResolvedValue(false);
     expect(await hk.requestAuthorization()).toBe("denied");
   });
 
-  it("deduplicates concurrent init attempts", async () => {
-    let initCb: ((err: string | null) => void) | undefined;
-    mockAHK.initHealthKit.mockImplementation((_perms: any, cb: any) => {
-      initCb = cb;
-    });
+  it("deduplicates concurrent authorization attempts", async () => {
+    let resolveAuthorization: ((granted: boolean) => void) | undefined;
+    mockHealthKit.requestAuthorization.mockImplementation(
+      () => new Promise<boolean>((resolve) => {
+        resolveAuthorization = resolve;
+      }),
+    );
 
     const p1 = hk.requestAuthorization();
     const p2 = hk.requestAuthorization();
-    expect(mockAHK.initHealthKit).toHaveBeenCalledTimes(1); // shared in-flight promise
+    expect(mockHealthKit.requestAuthorization).toHaveBeenCalledTimes(1);
 
-    initCb!(null); // resolve both callers
+    resolveAuthorization!(true); // resolve both callers
     expect(await p1).toBe("granted");
     expect(await p2).toBe("granted");
   });
@@ -84,7 +95,7 @@ describe("healthKit.ios / requestAuthorization", () => {
 
 describe("healthKit.ios / getAuthorizationStatus", () => {
   it("returns granted once initialized in-session", async () => {
-    mockAHK.initHealthKit.mockImplementation((_perms: any, cb: any) => cb(null));
+    mockHealthKit.requestAuthorization.mockResolvedValue(true);
     await hk.requestAuthorization(); // sets initialized = true
 
     expect(await hk.getAuthorizationStatus()).toBe("granted");
@@ -112,49 +123,72 @@ describe("healthKit.ios / subscribeHeartRate", () => {
     jest.useRealTimers();
   });
 
-  it("forwards new samples with rounded bpm on the first poll", () => {
+  it("forwards new samples with rounded bpm on the first poll", async () => {
     const now = Date.now();
     const onSample = jest.fn();
-    mockAHK.getHeartRateSamples.mockImplementation((_opts: any, cb: any) =>
-      cb(null, [{ value: 90.4, endDate: new Date(now - 30_000).toISOString() }]),
-    );
+    mockHealthKit.queryQuantitySamples.mockResolvedValue([
+      { quantity: 90.4, endDate: new Date(now - 30_000) },
+    ]);
 
     const unsubscribe = hk.subscribeHeartRate(onSample);
+    await Promise.resolve();
     expect(onSample).toHaveBeenCalledWith({ bpm: 90, timestamp: expect.any(Number) });
     unsubscribe();
   });
 
-  it("does not re-forward an already-seen sample", () => {
-    const now = Date.now();
+  it("queries recent heart-rate samples with the expected options", async () => {
     const onSample = jest.fn();
-    const sample = { value: 88, endDate: new Date(now - 10_000).toISOString() };
-    mockAHK.getHeartRateSamples.mockImplementation((_opts: any, cb: any) => cb(null, [sample]));
+    mockHealthKit.queryQuantitySamples.mockResolvedValue([]);
 
     const unsubscribe = hk.subscribeHeartRate(onSample);
+    await Promise.resolve();
+
+    expect(mockHealthKit.queryQuantitySamples).toHaveBeenCalledWith(
+      "HKQuantityTypeIdentifierHeartRate",
+      expect.objectContaining({
+        ascending: true,
+        limit: 20,
+        unit: "count/min",
+      }),
+    );
+    unsubscribe();
+  });
+
+  it("does not re-forward an already-seen sample", async () => {
+    const now = Date.now();
+    const onSample = jest.fn();
+    const sample = { quantity: 88, endDate: new Date(now - 10_000) };
+    mockHealthKit.queryQuantitySamples.mockResolvedValue([sample]);
+
+    const unsubscribe = hk.subscribeHeartRate(onSample);
+    await Promise.resolve();
     expect(onSample).toHaveBeenCalledTimes(1);
 
     jest.advanceTimersByTime(2000); // next poll, identical sample → skipped
+    await Promise.resolve();
     expect(onSample).toHaveBeenCalledTimes(1);
     unsubscribe();
   });
 
-  it("ignores errored poll results", () => {
+  it("ignores errored poll results", async () => {
     const onSample = jest.fn();
-    mockAHK.getHeartRateSamples.mockImplementation((_opts: any, cb: any) => cb("read error", null));
+    mockHealthKit.queryQuantitySamples.mockRejectedValue(new Error("read error"));
 
     const unsubscribe = hk.subscribeHeartRate(onSample);
+    await Promise.resolve();
     expect(onSample).not.toHaveBeenCalled();
     unsubscribe();
   });
 
-  it("stops polling after unsubscribe", () => {
+  it("stops polling after unsubscribe", async () => {
     const now = Date.now();
     const onSample = jest.fn();
-    mockAHK.getHeartRateSamples.mockImplementation((_opts: any, cb: any) =>
-      cb(null, [{ value: 80, endDate: new Date(now - 5_000).toISOString() }]),
-    );
+    mockHealthKit.queryQuantitySamples.mockResolvedValue([
+      { quantity: 80, endDate: new Date(now - 5_000) },
+    ]);
 
     const unsubscribe = hk.subscribeHeartRate(onSample);
+    await Promise.resolve();
     onSample.mockClear();
     unsubscribe();
 
@@ -162,16 +196,19 @@ describe("healthKit.ios / subscribeHeartRate", () => {
     expect(onSample).not.toHaveBeenCalled();
   });
 
-  it("drops a poll result that arrives after unsubscribe", () => {
-    let pollCb: ((err: unknown, samples: unknown) => void) | undefined;
-    mockAHK.getHeartRateSamples.mockImplementation((_opts: any, cb: any) => {
-      pollCb = cb; // capture without responding yet
-    });
+  it("drops a poll result that arrives after unsubscribe", async () => {
+    let resolveSamples: ((samples: unknown[]) => void) | undefined;
+    mockHealthKit.queryQuantitySamples.mockImplementation(
+      () => new Promise<unknown[]>((resolve) => {
+        resolveSamples = resolve;
+      }),
+    );
     const onSample = jest.fn();
 
     const unsubscribe = hk.subscribeHeartRate(onSample);
     unsubscribe(); // cancelled = true before the poll responds
-    pollCb!(null, [{ value: 80, endDate: new Date(Date.now()).toISOString() }]);
+    resolveSamples!([{ quantity: 80, endDate: new Date(Date.now()) }]);
+    await Promise.resolve();
 
     expect(onSample).not.toHaveBeenCalled();
   });

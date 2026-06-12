@@ -5,6 +5,7 @@
   "dependencies": {
     "@expo-google-fonts/frank-ruhl-libre": "^0.4.1",
     "@expo-google-fonts/heebo": "^0.4.2",
+    "@kingstinct/react-native-healthkit": "^14.0.2",
     "@react-native-async-storage/async-storage": "2.2.0",
     "@react-native-community/datetimepicker": "9.1.0",
     "babel-preset-expo": "~56.0.14",
@@ -35,7 +36,7 @@
     "react-native-audio-api": "0.12.2",
     "react-native-css-interop": "^0.2.4",
     "react-native-gesture-handler": "~2.31.1",
-    "react-native-health": "^1.19.0",
+    "react-native-nitro-modules": "^0.35.9",
     "react-native-reanimated": "4.3.1",
     "react-native-reanimated-carousel": "^4.0.3",
     "react-native-safe-area-context": "~5.7.0",
