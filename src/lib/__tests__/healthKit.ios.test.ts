@@ -65,9 +65,9 @@ describe("healthKit.ios / isAvailable", () => {
 });
 
 describe("healthKit.ios / requestAuthorization", () => {
-  it("returns granted when authorization succeeds", async () => {
+  it("returns requested when the dialog completes (outcome unknown)", async () => {
     mockHealthKit.requestAuthorization.mockResolvedValue(true);
-    expect(await hk.requestAuthorization()).toBe("granted");
+    expect(await hk.requestAuthorization()).toBe("requested");
   });
 
   it("returns denied when authorization fails", async () => {
@@ -88,22 +88,22 @@ describe("healthKit.ios / requestAuthorization", () => {
     expect(mockHealthKit.requestAuthorization).toHaveBeenCalledTimes(1);
 
     resolveAuthorization!(true); // resolve both callers
-    expect(await p1).toBe("granted");
-    expect(await p2).toBe("granted");
+    expect(await p1).toBe("requested");
+    expect(await p2).toBe("requested");
   });
 });
 
 describe("healthKit.ios / getAuthorizationStatus", () => {
-  it("returns granted once initialized in-session", async () => {
+  it("returns requested once initialized in-session", async () => {
     mockHealthKit.requestAuthorization.mockResolvedValue(true);
     await hk.requestAuthorization(); // sets initialized = true
 
-    expect(await hk.getAuthorizationStatus()).toBe("granted");
+    expect(await hk.getAuthorizationStatus()).toBe("requested");
   });
 
-  it("returns granted from the sticky flag on a cold start", async () => {
+  it("returns requested from the sticky flag on a cold start", async () => {
     mockGetGranted.mockResolvedValue(true);
-    expect(await hk.getAuthorizationStatus()).toBe("granted");
+    expect(await hk.getAuthorizationStatus()).toBe("requested");
   });
 
   it("returns undetermined when never granted", async () => {
@@ -143,12 +143,18 @@ describe("healthKit.ios / subscribeHeartRate", () => {
     const unsubscribe = hk.subscribeHeartRate(onSample);
     await Promise.resolve();
 
+    const now = new Date("2026-06-08T12:00:00Z").getTime();
     expect(mockHealthKit.queryQuantitySamples).toHaveBeenCalledWith(
       "HKQuantityTypeIdentifierHeartRate",
       expect.objectContaining({
         ascending: true,
         limit: 20,
         unit: "count/min",
+        filter: expect.objectContaining({
+          date: expect.objectContaining({
+            startDate: new Date(now - 60_000),
+          }),
+        }),
       }),
     );
     unsubscribe();

@@ -47,11 +47,15 @@ async function ensureInit(): Promise<boolean> {
   if (initPromise) return initPromise;
   initPromise = (async () => {
     try {
-      const granted = await requestHealthKitAuthorization(READ_PERMISSIONS);
-      if (!granted) return false;
+      // dialogCompleted is true when the authorization sheet was presented and
+      // dismissed — NOT a confirmation that the user granted access. Apple
+      // intentionally hides that choice from the app.
+      const dialogCompleted = await requestHealthKitAuthorization(READ_PERMISSIONS);
+      if (!dialogCompleted) return false;
       initialized = true;
-      // Persist so cold-start can answer "granted" without prompting (Apple's
-      // HealthKit read API intentionally won't tell us the user's choice).
+      // Persist so cold-start skips the prompt (we can't query the OS for the
+      // outcome; samples simply won't flow if the user denied, and the pulse
+      // hook falls through to mock in that case).
       await setHealthKitGranted(true);
       return true;
     } catch {
@@ -75,16 +79,19 @@ export async function isAvailable(): Promise<boolean> {
 
 export async function requestAuthorization(): Promise<AuthorizationStatus> {
   const ok = await ensureInit();
-  return ok ? "granted" : "denied";
+  // "requested" rather than "granted": the dialog completed but Apple does not
+  // reveal the user's choice. Callers should allow the user to proceed and rely
+  // on the pulse hook's mock-fallback if samples never arrive.
+  return ok ? "requested" : "denied";
 }
 
 export async function getAuthorizationStatus(): Promise<AuthorizationStatus> {
-  if (initialized) return "granted";
+  if (initialized) return "requested";
   // Read the sticky flag rather than requesting authorization, because that
   // triggers the iOS prompt on first run and we don't want the permissions
   // screen to ambush the user before they tap "Allow".
-  const granted = await getHealthKitGranted();
-  return granted ? "granted" : "undetermined";
+  const requested = await getHealthKitGranted();
+  return requested ? "requested" : "undetermined";
 }
 
 type HeartRateSampleValue = Pick<

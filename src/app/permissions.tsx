@@ -121,7 +121,7 @@ export default function Permissions() {
         setNotifsStatus("denied");
       }
       const hkStatus = await healthKit.getAuthorizationStatus();
-      if (hkStatus === "granted") setPulseStatus("granted");
+      if (hkStatus === "granted" || hkStatus === "requested") setPulseStatus("granted");
     })();
   }, []);
 
@@ -129,7 +129,9 @@ export default function Permissions() {
 
   const onPulsePress = async () => {
     const status = await healthKit.requestAuthorization();
-    setPulseStatus(status === "granted" ? "granted" : "denied");
+    // "requested" means the dialog was shown; we can't confirm the outcome.
+    // Allow the user to proceed — the pulse hook falls back to mock if denied.
+    setPulseStatus(status === "granted" || status === "requested" ? "granted" : "denied");
   };
 
   const onNotifsPress = async () => {

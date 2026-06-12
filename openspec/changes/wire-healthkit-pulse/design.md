@@ -21,11 +21,11 @@ The auto-soften behavior in `src/app/session.tsx` reads `pulsePhase` (a script-d
 
 ## Decisions
 
-### Library choice: `expo-health` over `react-native-health`
+### Library choice: `@kingstinct/react-native-healthkit`
 
-`expo-health` is the Expo-managed wrapper introduced after this writing. It works in Expo Go (for a subset of reads) and avoids the Cocoapods-flavored config that `react-native-health` requires. Trade-off: it's newer and has less community-debugged territory than `react-native-health`. We accept that risk in exchange for the smoother dev-loop.
+`expo-health` (the original preferred choice) turned out to be an npm placeholder with no real implementation, and `react-native-health` was considered but replaced. We use `@kingstinct/react-native-healthkit` (Kingstinct/Software Mansion), a Nitro-modules–based Swift wrapper with first-class TypeScript types and an Expo config plugin.
 
-If `expo-health` doesn't ship a stable enough heart-rate read by the time we implement, falling back to `react-native-health` is straightforward — we wrap the library in our own `src/lib/healthKit.ts` so call sites don't care.
+The adapter in `src/lib/healthKit.ios.ts` isolates all Kingstinct types so call sites (the pulse hook, permissions screen) remain library-agnostic. Background delivery is explicitly disabled in `app.json` since the adapter uses foreground polling, not `HKObserverQuery`.
 
 ### Auto-soften threshold is now real
 
