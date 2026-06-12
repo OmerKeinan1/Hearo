@@ -34,6 +34,7 @@ const resources = {
         soundsHint: "Pick what feels true. You can change this anytime.",
         ready: "Ready",
         back: "Back",
+        rereadIntro: "Re-read the intro",
       },
       home: {
         greeting: {
@@ -53,6 +54,15 @@ const resources = {
         begin: "Begin",
         change: "Change what's planned",
         withSound: "with {{sound}}",
+        needAMoment: "Need a moment?",
+      },
+      calming: {
+        breatheIn: "Breathe in",
+        breatheOut: "Breathe out",
+        hold: "Hold",
+        seePrompt: "Notice {{count}} things\nyou can see.",
+        hearPrompt: "Notice {{count}} things\nyou can hear.",
+        touchPrompt: "Notice {{count}} thing\nyou can touch.",
       },
       session: {
         softer: "Softer",
@@ -142,6 +152,7 @@ const resources = {
         soundsHint: "בחר את מה שמרגיש נכון. תוכל לשנות זאת בכל עת.",
         ready: "מוכן",
         back: "חזור",
+        rereadIntro: "קרא שוב את הפתיח",
       },
       home: {
         greeting: {
@@ -161,6 +172,15 @@ const resources = {
         begin: "התחל",
         change: "שנה את התכנון",
         withSound: "עם {{sound}}",
+        needAMoment: "צריך רגע?",
+      },
+      calming: {
+        breatheIn: "שאיפה",
+        breatheOut: "נשיפה",
+        hold: "החזקה",
+        seePrompt: "שים לב ל-{{count}} דברים\nשאתה יכול לראות.",
+        hearPrompt: "שים לב ל-{{count}} צלילים\nשאתה יכול לשמוע.",
+        touchPrompt: "שים לב ל-{{count}} מרקם\nשאתה יכול לגעת בו.",
       },
       session: {
         softer: "רך יותר",

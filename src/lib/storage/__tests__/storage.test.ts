@@ -11,6 +11,10 @@ import {
   setTrustedContactIds,
   getHealthKitGranted,
   setHealthKitGranted,
+  getPsychoEducationSeen,
+  setPsychoEducationSeen,
+  getClinicalScreeningResult,
+  setClinicalScreeningResult,
 } from "@/lib/storage/storage";
 
 // Tri-state semantics under test: `undefined` (never tried) vs `null` (tried,
@@ -131,5 +135,125 @@ describe("storage / healthkit granted flag", () => {
     await setHealthKitGranted(false);
     expect(await getHealthKitGranted()).toBe(false);
     expect(await AsyncStorage.getItem("hearo:healthKitGranted")).toBeNull();
+  });
+});
+
+// B-02: gates the first-session psycho-education screen. Boolean — no
+// tri-state. The Setup re-read link does NOT reset this.
+describe("storage / psycho-education seen flag", () => {
+  beforeEach(async () => {
+    await AsyncStorage.clear();
+  });
+
+  it("defaults to false (never seen)", async () => {
+    expect(await getPsychoEducationSeen()).toBe(false);
+  });
+
+  it("setPsychoEducationSeen(true) persists the flag", async () => {
+    await setPsychoEducationSeen(true);
+    expect(await getPsychoEducationSeen()).toBe(true);
+  });
+
+  it("setPsychoEducationSeen(false) clears the flag", async () => {
+    await setPsychoEducationSeen(true);
+    await setPsychoEducationSeen(false);
+    expect(await getPsychoEducationSeen()).toBe(false);
+    expect(await AsyncStorage.getItem("hearo:psychoEducationSeen")).toBeNull();
+  });
+});
+
+// B-01: PC-PTSD-5 outcome. Tri-state on the storage layer (undefined / null /
+// record); outcome enum on the record itself. The mild/moderate/severe model
+// from the original scaffold was replaced after the 2026-06-11 research
+// review — see add-clinical-screening proposal.
+describe("storage / clinical screening result", () => {
+  const VERSION = "pc-ptsd-5-v1-2026-06-11";
+
+  beforeEach(async () => {
+    await AsyncStorage.clear();
+  });
+
+  it("returns undefined when never asked", async () => {
+    expect(await getClinicalScreeningResult()).toBeUndefined();
+  });
+
+  it("setClinicalScreeningResult(null) persists the declined state", async () => {
+    await setClinicalScreeningResult(null);
+    expect(await getClinicalScreeningResult()).toBeNull();
+  });
+
+  it("round-trips a no-trauma record (items not administered)", async () => {
+    const record = {
+      instrument: "pc-ptsd-5" as const,
+      version: VERSION,
+      traumaExposure: false,
+      answers: [],
+      score: 0,
+      cutoff: 3,
+      outcome: "no-trauma" as const,
+      takenAt: 1_700_000_000_000,
+    };
+    await setClinicalScreeningResult(record);
+    expect(await getClinicalScreeningResult()).toEqual(record);
+  });
+
+  it("round-trips a below-threshold record", async () => {
+    const record = {
+      instrument: "pc-ptsd-5" as const,
+      version: VERSION,
+      traumaExposure: true,
+      answers: [true, true, false, false, false],
+      score: 2,
+      cutoff: 3,
+      outcome: "below-threshold" as const,
+      takenAt: 1_700_000_000_000,
+    };
+    await setClinicalScreeningResult(record);
+    expect(await getClinicalScreeningResult()).toEqual(record);
+  });
+
+  it("round-trips an above-threshold record", async () => {
+    const record = {
+      instrument: "pc-ptsd-5" as const,
+      version: VERSION,
+      traumaExposure: true,
+      answers: [true, true, true, true, true],
+      score: 5,
+      cutoff: 3,
+      outcome: "above-threshold" as const,
+      takenAt: 1_700_000_000_000,
+    };
+    await setClinicalScreeningResult(record);
+    expect(await getClinicalScreeningResult()).toEqual(record);
+  });
+
+  it("returns undefined when the persisted shape is malformed (legacy band record)", async () => {
+    await AsyncStorage.setItem(
+      "hearo:clinicalScreeningResult",
+      JSON.stringify({ band: "moderate", score: 42, takenAt: 1, version: "old" }),
+    );
+    expect(await getClinicalScreeningResult()).toBeUndefined();
+  });
+
+  it("returns undefined when the persisted outcome is unknown", async () => {
+    await AsyncStorage.setItem(
+      "hearo:clinicalScreeningResult",
+      JSON.stringify({
+        instrument: "pc-ptsd-5",
+        version: VERSION,
+        traumaExposure: true,
+        answers: [false, false, false, false, false],
+        score: 0,
+        cutoff: 3,
+        outcome: "🤷",
+        takenAt: 1,
+      }),
+    );
+    expect(await getClinicalScreeningResult()).toBeUndefined();
+  });
+
+  it("returns undefined when the stored value isn't JSON", async () => {
+    await AsyncStorage.setItem("hearo:clinicalScreeningResult", "not-json-not-declined");
+    expect(await getClinicalScreeningResult()).toBeUndefined();
   });
 });

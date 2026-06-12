@@ -117,6 +117,7 @@ export default function Session() {
     : "park";
 
   const consentedSounds = useSessionStore((s) => s.sounds);
+  const setLastEndedBy = useSessionStore((s) => s.setLastEndedBy);
   const isCrisisOpen = useCrisisStore((s) => s.isOpen);
 
   // ── Machine state ──────────────────────────────────────────────────────
@@ -290,7 +291,10 @@ export default function Session() {
     if (!sound) {
       // Rehearsal walk — no trigger. Just start the auto-advance timer.
       const id = setTimeout(() => {
-        if (machineStateRef.current === "ADAPTIVE_LOOP") dispatch({ type: "SESSION_END" });
+        if (machineStateRef.current === "ADAPTIVE_LOOP") {
+            setLastEndedBy("natural");
+            dispatch({ type: "SESSION_END" });
+          }
       }, ADAPTIVE_LOOP_MS);
       return () => clearTimeout(id);
     }
@@ -318,14 +322,20 @@ export default function Session() {
           peakGain: dBToGain(ceilingDb) * ceiling,
         });
         timerId = setTimeout(() => {
-          if (machineStateRef.current === "ADAPTIVE_LOOP") dispatch({ type: "SESSION_END" });
+          if (machineStateRef.current === "ADAPTIVE_LOOP") {
+            setLastEndedBy("natural");
+            dispatch({ type: "SESSION_END" });
+          }
         }, ADAPTIVE_LOOP_MS);
       })
       .catch(() => {
         // Trigger failed to load — continue as rehearsal walk.
         if (!cancelled) {
           timerId = setTimeout(() => {
-            if (machineStateRef.current === "ADAPTIVE_LOOP") dispatch({ type: "SESSION_END" });
+            if (machineStateRef.current === "ADAPTIVE_LOOP") {
+            setLastEndedBy("natural");
+            dispatch({ type: "SESSION_END" });
+          }
           }, ADAPTIVE_LOOP_MS);
         }
       });
@@ -534,7 +544,13 @@ export default function Session() {
           {/* Header */}
           <View className="flex-row justify-between items-center pt-2">
             <CrisisAffordance tone="on-scene" />
-            <Pressable hitSlop={16} onPress={() => dispatch({ type: "SESSION_END" })}>
+            <Pressable
+              hitSlop={16}
+              onPress={() => {
+                setLastEndedBy("manual-exit");
+                dispatch({ type: "SESSION_END" });
+              }}
+            >
               <Icon name="close" size={20} color={tokens.sceneText} />
             </Pressable>
           </View>
@@ -613,10 +629,35 @@ export default function Session() {
             </Text>
           </View>
 
+          {/* "I need a moment" — calming-protocol entry. Visible only after
+              the trigger has played at least once (ADAPTIVE_LOOP / WIND_DOWN),
+              never during AMBIENT_FADE_IN — see calming-protocol spec. */}
+          {(machineState === "ADAPTIVE_LOOP" || machineState === "WIND_DOWN") && (
+            <View style={{ alignItems: "center", paddingBottom: 4 }}>
+              <Pressable
+                hitSlop={12}
+                onPress={() => {
+                  engine.fadeOutAll(0.6);
+                  router.replace("/calming");
+                }}
+              >
+                <Text style={{ color: tokens.sceneText, fontFamily: fonts.body, fontSize: 14, opacity: 0.75 }}>
+                  {t("home.needAMoment")}
+                </Text>
+              </Pressable>
+            </View>
+          )}
+
           {/* Bottom row */}
           <View className="flex-row justify-between items-center pt-4 pb-6">
             <PulseTicker value={pulseBpm} />
-            <Pressable hitSlop={12} onPress={() => dispatch({ type: "SESSION_END" })}>
+            <Pressable
+              hitSlop={12}
+              onPress={() => {
+                setLastEndedBy("manual-exit");
+                dispatch({ type: "SESSION_END" });
+              }}
+            >
               <Text style={{ color: tokens.text, fontFamily: fonts.body, fontSize: 16, opacity: 0.85 }}>
                 [ {t("session.end")} ]
               </Text>

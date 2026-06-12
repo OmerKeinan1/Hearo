@@ -8,6 +8,10 @@ import {
   getDefaultPreferences,
   getAmbientTrack,
   getVoiceClips,
+  getPsychoEducation,
+  getCalmingProtocol,
+  getClinicalScreening,
+  computeClinicalScreeningOutcome,
   isPlaceholderSource,
   SCENE_ORDER,
   SOUND_ORDER,
@@ -119,5 +123,156 @@ describe("content / session audio sources", () => {
       expect(clip.label.he.length).toBeGreaterThan(0);
       expect(isPlaceholderSource(clip.source)).toBe(true);
     }
+  });
+});
+
+// B-02: the psycho-ed screen reads from this getter. Asserts the content
+// shape AND that both languages are populated (the EN translation drift
+// against HE source is the regression risk).
+describe("content / psycho-education", () => {
+  it("exposes eyebrow, heading, body, and continueLabel in both languages", () => {
+    const p = getPsychoEducation();
+    expect(p.eyebrow.en.length).toBeGreaterThan(0);
+    expect(p.eyebrow.he.length).toBeGreaterThan(0);
+    expect(p.heading.en.length).toBeGreaterThan(0);
+    expect(p.heading.he.length).toBeGreaterThan(0);
+    expect(p.continueLabel.en.length).toBeGreaterThan(0);
+    expect(p.continueLabel.he.length).toBeGreaterThan(0);
+  });
+
+  it("has at least four body paragraphs (the Hirschman source has five)", () => {
+    const p = getPsychoEducation();
+    expect(p.body.length).toBeGreaterThanOrEqual(4);
+    for (const para of p.body) {
+      expect(para.en.length).toBeGreaterThan(0);
+      expect(para.he.length).toBeGreaterThan(0);
+    }
+  });
+});
+
+// B-03 v1: the calming protocol is a 5-step user-initiated regulation flow.
+// Order and shape are load-bearing — wrong step order or missing prompts
+// would break the orchestrator that drives the screen.
+describe("content / calming protocol", () => {
+  it("returns exactly five steps in the documented order", () => {
+    const steps = getCalmingProtocol();
+    expect(steps.map((s) => s.kind)).toEqual([
+      "validation",
+      "body-grounding",
+      "box-breathing",
+      "sensory-grounding",
+      "close",
+    ]);
+  });
+
+  it("box-breathing has 2 cycles × 4 phases at 4s each — matches Hirschman doc", () => {
+    const steps = getCalmingProtocol();
+    const boxBreathing = steps.find((s) => s.kind === "box-breathing");
+    if (boxBreathing?.kind !== "box-breathing") {
+      throw new Error("box-breathing step missing");
+    }
+    expect(boxBreathing.cycles).toBe(2);
+    expect(boxBreathing.phaseMs).toBe(4_000);
+    expect(boxBreathing.prompts.inhale.en.length).toBeGreaterThan(0);
+    expect(boxBreathing.prompts.inhale.he.length).toBeGreaterThan(0);
+    expect(boxBreathing.prompts.hold.en.length).toBeGreaterThan(0);
+    expect(boxBreathing.prompts.exhale.en.length).toBeGreaterThan(0);
+  });
+
+  it("sensory-grounding has three sub-steps in 3 → 2 → 1 order", () => {
+    const steps = getCalmingProtocol();
+    const sensory = steps.find((s) => s.kind === "sensory-grounding");
+    if (sensory?.kind !== "sensory-grounding") {
+      throw new Error("sensory-grounding step missing");
+    }
+    expect(sensory.steps.map((s) => s.count)).toEqual([3, 2, 1]);
+    for (const sub of sensory.steps) {
+      expect(sub.prompt.en.length).toBeGreaterThan(0);
+      expect(sub.prompt.he.length).toBeGreaterThan(0);
+      expect(sub.durationMs).toBeGreaterThan(0);
+    }
+  });
+
+  it("prose steps (validation/body/close) have content in both languages", () => {
+    const steps = getCalmingProtocol();
+    for (const s of steps) {
+      if (s.kind === "validation" || s.kind === "body-grounding" || s.kind === "close") {
+        expect(s.text.en.length).toBeGreaterThan(0);
+        expect(s.text.he.length).toBeGreaterThan(0);
+        expect(s.durationMs).toBeGreaterThan(0);
+      }
+    }
+  });
+});
+
+// B-01: PC-PTSD-5. Item text in EN is verbatim from VA's official PDF, so
+// these tests assert shape + length + presence, not specific wording.
+describe("content / clinical screening (PC-PTSD-5)", () => {
+  it("exposes intro, trauma-exposure prompt, 5 items, and three outcome screens in both languages", () => {
+    const c = getClinicalScreening();
+    expect(c.version.length).toBeGreaterThan(0);
+    expect(c.cutoff).toBe(3);
+
+    expect(c.intro.eyebrow.en.length).toBeGreaterThan(0);
+    expect(c.intro.eyebrow.he.length).toBeGreaterThan(0);
+    expect(c.intro.heading.en.length).toBeGreaterThan(0);
+    expect(c.intro.heading.he.length).toBeGreaterThan(0);
+    expect(c.intro.body.en.length).toBeGreaterThan(0);
+    expect(c.intro.body.he.length).toBeGreaterThan(0);
+
+    expect(c.traumaExposure.prompt.en.length).toBeGreaterThan(0);
+    expect(c.traumaExposure.prompt.he.length).toBeGreaterThan(0);
+
+    expect(c.items.questions).toHaveLength(5);
+    for (const q of c.items.questions) {
+      expect(q.en.length).toBeGreaterThan(0);
+      expect(q.he.length).toBeGreaterThan(0);
+    }
+
+    expect(c.outcomes.noTrauma.heading.en.length).toBeGreaterThan(0);
+    expect(c.outcomes.belowThreshold.heading.en.length).toBeGreaterThan(0);
+    expect(c.outcomes.aboveThreshold.heading.en.length).toBeGreaterThan(0);
+    expect(c.outcomes.aboveThreshold.continueLabel.en.length).toBeGreaterThan(0);
+  });
+});
+
+describe("content / computeClinicalScreeningOutcome", () => {
+  it("returns no-trauma + score 0 when traumaExposure is false (items irrelevant)", () => {
+    expect(computeClinicalScreeningOutcome(false, [], 3)).toEqual({
+      score: 0,
+      outcome: "no-trauma",
+    });
+    // Even if answers were provided (they shouldn't be), no-trauma wins.
+    expect(computeClinicalScreeningOutcome(false, [true, true, true, true, true], 3)).toEqual({
+      score: 0,
+      outcome: "no-trauma",
+    });
+  });
+
+  it("returns below-threshold for score < cutoff", () => {
+    expect(
+      computeClinicalScreeningOutcome(true, [false, false, false, false, false], 3),
+    ).toEqual({ score: 0, outcome: "below-threshold" });
+    expect(
+      computeClinicalScreeningOutcome(true, [true, false, false, false, false], 3),
+    ).toEqual({ score: 1, outcome: "below-threshold" });
+    expect(
+      computeClinicalScreeningOutcome(true, [true, true, false, false, false], 3),
+    ).toEqual({ score: 2, outcome: "below-threshold" });
+  });
+
+  it("returns above-threshold at exactly the cutoff (boundary case for the gate)", () => {
+    expect(
+      computeClinicalScreeningOutcome(true, [true, true, true, false, false], 3),
+    ).toEqual({ score: 3, outcome: "above-threshold" });
+  });
+
+  it("returns above-threshold for score > cutoff", () => {
+    expect(
+      computeClinicalScreeningOutcome(true, [true, true, true, true, false], 3),
+    ).toEqual({ score: 4, outcome: "above-threshold" });
+    expect(
+      computeClinicalScreeningOutcome(true, [true, true, true, true, true], 3),
+    ).toEqual({ score: 5, outcome: "above-threshold" });
   });
 });

@@ -14,6 +14,8 @@ const KEYS = {
   reminderSchedule: `${PREFIX}reminderSchedule`,
   trustedContactIds: `${PREFIX}trustedContactIds`,
   healthKitGranted: `${PREFIX}healthKitGranted`,
+  psychoEducationSeen: `${PREFIX}psychoEducationSeen`,
+  clinicalScreeningResult: `${PREFIX}clinicalScreeningResult`,
 } as const;
 
 /** A name we've resolved (or explicitly determined we can't resolve) for the
@@ -94,5 +96,86 @@ export async function setHealthKitGranted(granted: boolean): Promise<void> {
     await AsyncStorage.setItem(KEYS.healthKitGranted, "true");
   } else {
     await AsyncStorage.removeItem(KEYS.healthKitGranted);
+  }
+}
+
+/** Whether the user has seen the first-session psycho-education screen.
+ *  Boolean — defaults to `false` (never seen). Two-state, no tri-state needed:
+ *  the screen has no meaningful "tried-and-skipped" case. The Setup screen's
+ *  re-read link does not reset this to `false`. */
+export async function getPsychoEducationSeen(): Promise<boolean> {
+  const raw = await AsyncStorage.getItem(KEYS.psychoEducationSeen);
+  return raw === "true";
+}
+
+export async function setPsychoEducationSeen(seen: boolean): Promise<void> {
+  if (seen) {
+    await AsyncStorage.setItem(KEYS.psychoEducationSeen, "true");
+  } else {
+    await AsyncStorage.removeItem(KEYS.psychoEducationSeen);
+  }
+}
+
+/** Clinical screening result (PC-PTSD-5, see add-clinical-screening change).
+ *  Storage tri-state:
+ *  - `undefined`: never asked (default first-launch state).
+ *  - `null`: explicitly declined / "prefer not to say".
+ *  - Record: a completed screening.
+ *
+ *  The outcome is a two-band gate, not a severity gradient. The
+ *  `mild | moderate | severe` model used in the original scaffold was dropped
+ *  after the 2026-06-11 research review confirmed it is not VA-published. */
+export type ClinicalScreeningOutcome =
+  | "no-trauma"           // trauma-exposure question answered "no" — items not administered
+  | "below-threshold"     // score < cutoff — continue to self-guided
+  | "above-threshold";    // score >= cutoff — recommend clinician care (advisory, not blocking)
+
+export type ClinicalScreeningResult = {
+  instrument: "pc-ptsd-5";
+  version: string;            // e.g. "v1-2026-06-11" — bumps when wording / cutoff revised
+  traumaExposure: boolean;    // step 1 answer
+  answers: boolean[];         // length 5 when traumaExposure=true, [] when false
+  score: number;              // 0–5; 0 when traumaExposure=false
+  cutoff: number;             // currently 3 (Prins et al., 2016)
+  outcome: ClinicalScreeningOutcome;
+  takenAt: number;            // epoch ms
+};
+
+function isValidOutcome(value: unknown): value is ClinicalScreeningOutcome {
+  return value === "no-trauma" || value === "below-threshold" || value === "above-threshold";
+}
+
+export async function getClinicalScreeningResult(): Promise<ClinicalScreeningResult | null | undefined> {
+  const raw = await AsyncStorage.getItem(KEYS.clinicalScreeningResult);
+  if (raw === null) return undefined;
+  if (raw === "declined") return null;
+  try {
+    const parsed = JSON.parse(raw) as ClinicalScreeningResult;
+    if (
+      parsed.instrument === "pc-ptsd-5" &&
+      typeof parsed.version === "string" &&
+      typeof parsed.traumaExposure === "boolean" &&
+      Array.isArray(parsed.answers) &&
+      parsed.answers.every((a) => typeof a === "boolean") &&
+      typeof parsed.score === "number" &&
+      typeof parsed.cutoff === "number" &&
+      isValidOutcome(parsed.outcome) &&
+      typeof parsed.takenAt === "number"
+    ) {
+      return parsed;
+    }
+    return undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+export async function setClinicalScreeningResult(
+  result: ClinicalScreeningResult | null,
+): Promise<void> {
+  if (result === null) {
+    await AsyncStorage.setItem(KEYS.clinicalScreeningResult, "declined");
+  } else {
+    await AsyncStorage.setItem(KEYS.clinicalScreeningResult, JSON.stringify(result));
   }
 }
