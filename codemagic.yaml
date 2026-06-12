@@ -136,7 +136,8 @@ workflows:
 
       - name: Apply App Store provisioning profiles
         script: |
-          xcode-project use-profiles
+          xcode-project use-profiles \
+            --project "$CM_BUILD_DIR/ios/Hearo.xcodeproj"
 
       - name: Set iOS build number
         script: |
