@@ -617,7 +617,8 @@ export type PcPtsd5Content = {
     aboveThreshold: {
       heading: LocalizedText;
       body: LocalizedText;
-      mativLabel: LocalizedText;
+      // TODO(G-01): add `mativLabel: LocalizedText` and a button affordance
+      // in screening.tsx when the Mativ referral deep-link is available.
       continueLabel: LocalizedText;
     };
   };
@@ -649,9 +650,9 @@ const CLINICAL_SCREENING: PcPtsd5Content = {
     // is a long enumeration of trauma examples; we condense for mobile while
     // preserving the clinical content). The 5 symptom items below are verbatim.
     prompt: {
-      en: "Sometimes things happen to people that are unusually frightening, horrible, or traumatic — a serious accident, a physical or sexual assault, war, seeing someone hurt or killed, losing a loved one to violence.\n\nHave you ever experienced something like that?",
+      en: "Sometimes things happen to people that are unusually frightening, horrible, or traumatic. A serious accident, a physical or sexual assault, war, seeing someone hurt or killed, losing a loved one to violence.\n\nHave you ever experienced something like that?",
       // TODO(hirschman-review)
-      he: "לפעמים קורים לאנשים דברים מפחידים, נוראיים או טראומטיים במיוחד — תאונה חמורה, תקיפה גופנית או מינית, מלחמה, ראייה של מישהו שנפצע או נהרג, אובדן של אדם אהוב באלימות.\n\nהאם אי פעם חווית משהו כזה?",
+      he: "לפעמים קורים לאנשים דברים מפחידים, נוראיים או טראומטיים במיוחד. תאונה חמורה, תקיפה גופנית או מינית, מלחמה, ראייה של מישהו שנפצע או נהרג, אובדן של אדם אהוב באלימות.\n\nהאם אי פעם חווית משהו כזה?",
     },
     yes: { en: "Yes", he: "כן" },
     no: { en: "No", he: "לא" },
@@ -740,14 +741,9 @@ const CLINICAL_SCREENING: PcPtsd5Content = {
         he: "אתה לא חייב\nלעשות את זה לבד.",
       },
       body: {
-        en: "What you've shared sounds like something a conversation with someone trained in trauma could really help with. We work with the Mativ Institute and can put you in touch. The app is here either way — you can use it on its own, or alongside that support.",
+        en: "What you've shared sounds like something a conversation with someone trained in trauma could really help with. We work with the Mativ Institute and can put you in touch. The app is here either way. You can use it on its own, or alongside that support.",
         // TODO(hirschman-review)
-        he: "מה ששיתפת נשמע כמו משהו ששיחה עם איש מקצוע מאומן בטראומה יכולה לעזור איתו. אנחנו עובדים עם מכון מטיב ויכולים לחבר ביניכם. האפליקציה תהיה כאן בכל מקרה — תוכל להשתמש בה בנפרד, או לצד התמיכה הזו.",
-      },
-      mativLabel: {
-        en: "Connect with Mativ",
-        // TODO(hirschman-review)
-        he: "התחבר עם מטיב",
+        he: "מה ששיתפת נשמע כמו משהו ששיחה עם איש מקצוע מאומן בטראומה יכולה לעזור איתו. אנחנו עובדים עם מכון מטיב ויכולים לחבר ביניכם. האפליקציה תהיה כאן בכל מקרה. תוכל להשתמש בה בנפרד, או לצד התמיכה הזו.",
       },
       continueLabel: {
         en: "Continue to the app",
