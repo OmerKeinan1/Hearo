@@ -15,11 +15,9 @@ workflows:
       node: latest
       xcode: latest
       cocoapods: default
-      ios_signing:
-        distribution_type: app_store
-        bundle_identifier: com.techheal.hearo
       vars:
         BUNDLE_ID: "com.techheal.hearo"
+        APP_NAME: "Hearo"
         XCODE_WORKSPACE: "Hearo.xcworkspace"
         XCODE_SCHEME: "Hearo"
 
@@ -50,6 +48,89 @@ workflows:
         script: |
           cd ios
           pod install
+
+      - name: Initialize keychain
+        script: |
+          keychain initialize
+
+      - name: Ensure Apple app capabilities
+        script: |
+          set -e
+
+          BUNDLE_RESOURCE_ID=$(app-store-connect bundle-ids list \
+            --bundle-id-identifier "$BUNDLE_ID" \
+            --strict-match-identifier \
+            --json | node -e '
+              const fs = require("fs");
+              const input = fs.readFileSync(0, "utf8").trim();
+              if (!input) process.exit(0);
+              const wanted = process.env.BUNDLE_ID;
+              const ids = [];
+              const visit = (value) => {
+                if (Array.isArray(value)) return value.forEach(visit);
+                if (!value || typeof value !== "object") return;
+
+                const attributes = value.attributes || {};
+                const identifier =
+                  value.identifier ||
+                  value.bundleIdIdentifier ||
+                  attributes.identifier ||
+                  attributes.bundleIdIdentifier;
+
+                if (value.id && (!wanted || identifier === wanted)) ids.push(value.id);
+                Object.values(value).forEach(visit);
+              };
+
+              visit(JSON.parse(input));
+              process.stdout.write(ids[0] || "");
+            ')
+
+          if [ -z "$BUNDLE_RESOURCE_ID" ]; then
+            BUNDLE_RESOURCE_ID=$(app-store-connect bundle-ids create "$BUNDLE_ID" \
+              --name "$APP_NAME" \
+              --platform IOS \
+              --json | node -e '
+                const fs = require("fs");
+                const input = fs.readFileSync(0, "utf8").trim();
+                if (!input) process.exit(0);
+                const ids = [];
+                const visit = (value) => {
+                  if (Array.isArray(value)) return value.forEach(visit);
+                  if (!value || typeof value !== "object") return;
+                  if (value.id) ids.push(value.id);
+                  Object.values(value).forEach(visit);
+                };
+                visit(JSON.parse(input));
+                process.stdout.write(ids[0] || "");
+              ')
+          fi
+
+          if [ -z "$BUNDLE_RESOURCE_ID" ]; then
+            echo "Unable to resolve Apple bundle identifier resource ID for $BUNDLE_ID."
+            exit 1
+          fi
+
+          app-store-connect bundle-ids enable-capabilities "$BUNDLE_RESOURCE_ID" \
+            --capability HealthKit || true
+
+          CAPABILITIES_JSON=$(app-store-connect bundle-ids capabilities "$BUNDLE_RESOURCE_ID" --json)
+          if ! echo "$CAPABILITIES_JSON" | grep -q "HealthKit"; then
+            echo "HealthKit is not enabled for $BUNDLE_ID. Enable it in Apple Developer or grant the Codemagic integration permission to manage identifiers."
+            exit 1
+          fi
+
+      - name: Fetch or create App Store signing files
+        script: |
+          : "${CERTIFICATE_PRIVATE_KEY:?Set CERTIFICATE_PRIVATE_KEY in the app_store_credentials Codemagic variable group.}"
+
+          app-store-connect fetch-signing-files "$BUNDLE_ID" \
+            --type IOS_APP_STORE \
+            --create \
+            --delete-stale-profiles
+
+      - name: Add signing certificates to keychain
+        script: |
+          keychain add-certificates
 
       - name: Apply App Store provisioning profiles
         script: |
