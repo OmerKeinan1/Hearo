@@ -1,0 +1,92 @@
+workflows:
+  ios-app-store:
+    name: iOS App Store
+    instance_type: mac_mini_m2
+    max_build_duration: 120
+
+    # Configure an Apple Developer Portal integration with this reference name
+    # in Codemagic Team settings before running the workflow.
+    integrations:
+      app_store_connect: codemagic
+
+    environment:
+      groups:
+        - app_store_credentials
+      node: latest
+      xcode: latest
+      cocoapods: default
+      ios_signing:
+        distribution_type: app_store
+        bundle_identifier: com.techheal.hearo
+      vars:
+        BUNDLE_ID: "com.techheal.hearo"
+        XCODE_WORKSPACE: "Hearo.xcworkspace"
+        XCODE_SCHEME: "Hearo"
+
+    triggering:
+      events:
+        - tag
+      tag_patterns:
+        - pattern: "ios-v*"
+          include: true
+      cancel_previous_builds: true
+
+    cache:
+      cache_paths:
+        - $HOME/.npm
+        - $HOME/Library/Caches/CocoaPods
+        - $HOME/Library/Developer/Xcode/DerivedData
+
+    scripts:
+      - name: Install npm dependencies
+        script: |
+          npm ci
+
+      - name: Generate native iOS project
+        script: |
+          npx expo prebuild --platform ios --non-interactive --clean
+
+      - name: Install CocoaPods dependencies
+        script: |
+          cd ios
+          pod install
+
+      - name: Apply App Store provisioning profiles
+        script: |
+          xcode-project use-profiles
+
+      - name: Set iOS build number
+        script: |
+          : "${APP_STORE_APPLE_ID:?Set APP_STORE_APPLE_ID in the app_store_credentials Codemagic variable group.}"
+
+          LATEST_BUILD_NUMBER=$(app-store-connect get-latest-app-store-build-number "$APP_STORE_APPLE_ID" --platform IOS --all-versions 2>/dev/null || true)
+
+          if [ -n "${LATEST_BUILD_NUMBER:-}" ]; then
+            UPDATED_BUILD_NUMBER=$(($LATEST_BUILD_NUMBER + 1))
+          else
+            UPDATED_BUILD_NUMBER=$PROJECT_BUILD_NUMBER
+          fi
+
+          cd ios
+          agvtool new-version -all "$UPDATED_BUILD_NUMBER"
+
+      - name: Build signed IPA
+        script: |
+          xcode-project build-ipa \
+            --workspace "$CM_BUILD_DIR/ios/$XCODE_WORKSPACE" \
+            --scheme "$XCODE_SCHEME"
+
+    artifacts:
+      - build/ios/ipa/*.ipa
+      - /tmp/xcodebuild_logs/*.log
+      - $HOME/Library/Developer/Xcode/DerivedData/**/Build/**/*.app
+      - $HOME/Library/Developer/Xcode/DerivedData/**/Build/**/*.dSYM
+
+    publishing:
+      app_store_connect:
+        auth: integration
+        submit_to_testflight: true
+        expire_build_submitted_for_review: true
+        submit_to_app_store: true
+        cancel_previous_submissions: true
+        release_type: MANUAL
