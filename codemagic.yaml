@@ -117,8 +117,9 @@ workflows:
             --capability HealthKit || true
 
           CAPABILITIES_JSON=$(app-store-connect bundle-ids capabilities "$BUNDLE_RESOURCE_ID" --json)
-          if ! echo "$CAPABILITIES_JSON" | grep -q "HealthKit"; then
+          if ! echo "$CAPABILITIES_JSON" | grep -qi "healthkit"; then
             echo "HealthKit is not enabled for $BUNDLE_ID. Enable it in Apple Developer or grant the Codemagic integration permission to manage identifiers."
+            echo "$CAPABILITIES_JSON"
             exit 1
           fi
 
