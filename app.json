@@ -14,10 +14,14 @@
     "scheme": "hearo",
     "userInterfaceStyle": "automatic",
     "ios": {
-      "icon": "./assets/expo.icon",
+      "bundleIdentifier": "com.techheal.hearo",
+      "config": {
+        "usesNonExemptEncryption": false
+      },
       "infoPlist": {
         "NSContactsUsageDescription": "We use this so you can quickly call someone you trust during a crisis moment. Your contacts stay on your device — we don't upload them.",
-        "NSHealthShareUsageDescription": "We read your heart rate from Apple Health so the app can soften the soundscape when your body needs it. Nothing about your heart rate leaves your device."
+        "NSHealthShareUsageDescription": "We read your heart rate from Apple Health so the app can soften the soundscape when your body needs it. Nothing about your heart rate leaves your device.",
+        "NSHealthUpdateUsageDescription": "Hearo reads heart rate data from Apple Health but does not write or update any health data."
       },
       "entitlements": {
         "com.apple.developer.healthkit": true,
@@ -27,7 +31,7 @@
     "android": {
       "adaptiveIcon": {
         "backgroundColor": "#161E33",
-        "foregroundImage": "./assets/images/android-icon-foreground.png",
+        "foregroundImage": "./assets/images/icon.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
       "predictiveBackGestureEnabled": false,
@@ -71,9 +75,11 @@
         }
       ],
       [
-        "react-native-health",
+        "@kingstinct/react-native-healthkit",
         {
-          "healthSharePermission": "We read your heart rate from Apple Health so the app can soften the soundscape when your body needs it. Nothing about your heart rate leaves your device."
+          "NSHealthShareUsageDescription": "We read your heart rate from Apple Health so the app can soften the soundscape when your body needs it. Nothing about your heart rate leaves your device.",
+          "NSHealthUpdateUsageDescription": false,
+          "background": false
         }
       ]
     ],

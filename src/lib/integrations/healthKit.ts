@@ -6,7 +6,10 @@
 // through to the mock generator. No web/Android implementation today; if
 // Android HealthConnect lands later, it lives in `healthKit.android.ts`.
 
-export type AuthorizationStatus = "granted" | "denied" | "undetermined";
+// "requested" means the HealthKit authorization dialog was shown but we cannot
+// confirm the outcome — Apple's API intentionally hides the user's choice.
+// Treat it as "proceed, but expect possible empty samples (mock fallback)."
+export type AuthorizationStatus = "granted" | "requested" | "denied" | "undetermined";
 
 export type HeartRateSample = {
   bpm: number;

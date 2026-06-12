@@ -1,6 +1,6 @@
 ## 1. Dependency + native config
 
-- [x] 1.1 `npx expo install expo-health` (fall back to `react-native-health` if expo-health doesn't support our heart-rate read use case at the SDK version we target — verify via a small spike first) — *`expo-health` on npm is a placeholder; installed `react-native-health@1.19.0` which ships an Expo config plugin*
+- [x] 1.1 Install `@kingstinct/react-native-healthkit` — `expo-health` was a placeholder and `react-native-health` was superseded; Kingstinct provides a Nitro-modules Swift wrapper with a first-class Expo config plugin
 - [x] 1.2 Add `NSHealthShareUsageDescription` to `app.json` ios.infoPlist: "We read your heart rate from Apple Health so the app can soften the soundscape when your body needs it. Nothing about your heart rate leaves your device."
 - [x] 1.3 Add the HealthKit entitlement to the iOS config
 
