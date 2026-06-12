@@ -62,6 +62,26 @@ describe("healthKit.ios / isAvailable", () => {
     });
     expect(await hk.isAvailable()).toBe(false);
   });
+
+  // Covers the inner ensureInit() catch — distinct from the outer isAvailable
+  // catch above. Reaches the catch by letting isHealthDataAvailable succeed
+  // and rejecting from requestAuthorization itself.
+  it("returns false when authorization itself rejects", async () => {
+    mockHealthKit.isHealthDataAvailable.mockReturnValue(true);
+    mockHealthKit.requestAuthorization.mockRejectedValue(new Error("auth boom"));
+    expect(await hk.isAvailable()).toBe(false);
+    expect(mockSetGranted).not.toHaveBeenCalled();
+  });
+
+  // Covers the `if (initialized) return true;` early-return on the second call —
+  // first call sets `initialized`, second call short-circuits.
+  it("short-circuits subsequent calls once initialized", async () => {
+    mockHealthKit.isHealthDataAvailable.mockReturnValue(true);
+    mockHealthKit.requestAuthorization.mockResolvedValue(true);
+    expect(await hk.isAvailable()).toBe(true);
+    expect(await hk.isAvailable()).toBe(true);
+    expect(mockHealthKit.requestAuthorization).toHaveBeenCalledTimes(1);
+  });
 });
 
 describe("healthKit.ios / requestAuthorization", () => {
@@ -217,5 +237,33 @@ describe("healthKit.ios / subscribeHeartRate", () => {
     await Promise.resolve();
 
     expect(onSample).not.toHaveBeenCalled();
+  });
+
+  // Defensive: the Kingstinct types say endDate is a Date, but the native
+  // bridge has been observed returning ISO strings on some paths. getEndDateMs
+  // handles both. These tests exercise the non-Date branches.
+  it("parses a string endDate by passing it through new Date()", async () => {
+    const now = Date.now();
+    const onSample = jest.fn();
+    mockHealthKit.queryQuantitySamples.mockResolvedValue([
+      { quantity: 92, endDate: new Date(now - 10_000).toISOString() },
+    ]);
+
+    const unsubscribe = hk.subscribeHeartRate(onSample);
+    await Promise.resolve();
+    expect(onSample).toHaveBeenCalledWith({ bpm: 92, timestamp: expect.any(Number) });
+    unsubscribe();
+  });
+
+  it("skips a sample whose endDate fails to parse", async () => {
+    const onSample = jest.fn();
+    mockHealthKit.queryQuantitySamples.mockResolvedValue([
+      { quantity: 75, endDate: "not-a-date" },
+    ]);
+
+    const unsubscribe = hk.subscribeHeartRate(onSample);
+    await Promise.resolve();
+    expect(onSample).not.toHaveBeenCalled();
+    unsubscribe();
   });
 });
