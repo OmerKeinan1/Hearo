@@ -4,10 +4,8 @@ workflows:
     instance_type: mac_mini_m2
     max_build_duration: 120
 
-    # Configure an Apple Developer Portal integration with this reference name
-    # in Codemagic Team settings before running the workflow.
     integrations:
-      app_store_connect: codemagic
+      app_store_connect: "Mazilon NPO account"
 
     environment:
       groups:
@@ -36,6 +34,11 @@ workflows:
         - $HOME/Library/Developer/Xcode/DerivedData
 
     scripts:
+      - name: Validate release configuration
+        script: |
+          : "${APP_STORE_APPLE_ID:?Set APP_STORE_APPLE_ID in the app_store_credentials Codemagic variable group.}"
+          : "${CERTIFICATE_PRIVATE_KEY:?Set CERTIFICATE_PRIVATE_KEY in the app_store_credentials Codemagic variable group.}"
+
       - name: Install npm dependencies
         script: |
           npm ci
@@ -121,8 +124,6 @@ workflows:
 
       - name: Fetch or create App Store signing files
         script: |
-          : "${CERTIFICATE_PRIVATE_KEY:?Set CERTIFICATE_PRIVATE_KEY in the app_store_credentials Codemagic variable group.}"
-
           app-store-connect fetch-signing-files "$BUNDLE_ID" \
             --type IOS_APP_STORE \
             --create \
@@ -138,8 +139,6 @@ workflows:
 
       - name: Set iOS build number
         script: |
-          : "${APP_STORE_APPLE_ID:?Set APP_STORE_APPLE_ID in the app_store_credentials Codemagic variable group.}"
-
           LATEST_BUILD_NUMBER=$(app-store-connect get-latest-app-store-build-number "$APP_STORE_APPLE_ID" --platform IOS --all-versions 2>/dev/null || true)
 
           if [ -n "${LATEST_BUILD_NUMBER:-}" ]; then
