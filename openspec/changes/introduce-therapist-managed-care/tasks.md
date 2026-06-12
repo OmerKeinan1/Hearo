@@ -31,7 +31,7 @@
 ## 4. Phase 4 — Patient session sync (linked patients only)
 
 - [ ] 4.1 In the patient app, add an auth flow gate on launch that checks for a stored Supabase session. If none, app is in invite-required mode (see Phase 5).
-- [ ] 4.2 In `src/lib/session-store.ts`, add a post-session hook that constructs the session record (scene, sound, ceiling chosen, actual peak, pulse blob, reflection, timestamps) and inserts it into the `sessions` table on Supabase.
+- [ ] 4.2 In `src/lib/storage/session-store.ts`, add a post-session hook that constructs the session record (scene, sound, ceiling chosen, actual peak, pulse blob, reflection, timestamps) and inserts it into the `sessions` table on Supabase.
 - [ ] 4.3 Implement upload retry: if offline at session end, the record is queued in AsyncStorage and uploaded on next foreground.
 - [ ] 4.4 Verify the per-spec "session payload contains ONLY session-scoped data" rule: no trusted contacts, no crisis events, no continuous pulse, no app-open telemetry. Add an integration test that constructs the payload and snapshots its allowed keyset.
 - [ ] 4.5 Therapist dashboard: replace mock session list with real reads from Supabase scoped by the active `therapist_patients` link.

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useCallback } from 'react';
-import { AudioEngine, TriggerSchedulerConfig } from '@/lib/audio-engine';
+import { AudioEngine, TriggerSchedulerConfig } from '@/lib/audio/audio-engine';
 
 export type { TriggerSchedulerConfig };
 

@@ -321,7 +321,7 @@ Sheet style: `bg-elev`, rounded, no scrim flash. Slides in from bottom at defaul
 
 - Locale detected at launch via `expo-localization`. Hebrew device → Hebrew UI + RTL layout. Otherwise English.
 - Fallback for non-EN/non-HE devices: **Hebrew** (the demo audience is Israeli).
-- All copy in `lib/i18n.ts` with `en` and `he` keys.
+- All copy in `lib/ui/i18n.ts` with `en` and `he` keys.
 - Layout mirroring via React Native's `I18nManager.forceRTL` + NativeWind `rtl:` variants. Every margin/arrow/alignment flips automatically.
 - Wordmark is the one exception. It stays left-anchored in both layouts because it's a logo, not text.
 

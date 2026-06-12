@@ -1,0 +1,775 @@
+// Content provisioning seam.
+//
+// Today this returns bundled local data. Every getter is a swap point for a
+// Supabase query — see the TODO(supabase) markers, each naming the table /
+// query that will eventually serve it. When the schema lands, only the
+// bodies here change; call sites stay the same (they gain `await`).
+
+import { ImageSourcePropType } from "react-native";
+
+import { getDefaultSceneForTimeOfDay } from "@/lib/ui/timeOfDay";
+
+export type SceneKey = "beach" | "park" | "cafe" | "road";
+export type SoundKey =
+  | "motorcycle"
+  | "helicopter"
+  | "fireworks"
+  | "siren"
+  | "car-horn"
+  | "door-slam";
+// Note: dog, baby-crying, restaurant audio files remain on disk under
+// ui/assets/sounds/triggers/ — these are off-persona for combat veterans
+// (postpartum / K9 / social-anxiety trauma) but kept for a future expansion
+// to other trauma profiles.
+
+/** `require()` of a bundled mp3 returns a number from RN's asset registry. */
+export type AudioModule = number;
+export type Phase = "opening" | "during" | "calming";
+export type Lang = "en" | "he";
+
+export type LocalizedText = { en: string; he: string };
+
+export type SceneMedia = {
+  // TODO(asset): replace placeholder URIs with bundled, scene-accurate media in
+  // ui/assets/scenes/ (still: require(...), video: require(...)). The scene tint
+  // below is the guaranteed-correct fallback — it always renders the right mood
+  // even if the image fails to load.
+  still?: ImageSourcePropType | string;
+  video?: ImageSourcePropType | string;
+};
+
+export type Scene = {
+  key: SceneKey;
+  label: LocalizedText;
+  short: LocalizedText;
+  media: SceneMedia;
+  tint: { top: string };
+  voice: Record<Phase, LocalizedText>;
+};
+
+export type Sound = {
+  key: SoundKey;
+  label: LocalizedText;
+  // TODO(supabase): `sound_variations` table — each row a (sound_id, audio_url, duration_ms).
+  // Variations exist so the user can't anticipate the exact clip — a small but
+  // therapeutically meaningful unpredictability.
+  audioVariations: AudioModule[];
+};
+
+export type Preferences = {
+  scene: SceneKey;
+  sounds: SoundKey[];
+};
+
+export function localize(text: LocalizedText, lang: string): string {
+  return lang === "he" ? text.he : text.en;
+}
+
+// TODO(supabase): `scenes` table (+ join `scene_voice_lines` keyed by scene + phase + lang).
+const SCENES: Record<SceneKey, Scene> = {
+  beach: {
+    key: "beach",
+    label: { en: "Beach, evening", he: "חוף, ערב" },
+    short: { en: "Beach", he: "חוף" },
+    media: {
+      still: require("@/assets/scenes/beach.png"),
+    },
+    tint: { top: "#3A4F4A" },
+    voice: {
+      opening: {
+        en: "You're walking\nalong the beach.\nThe waves are quiet.",
+        he: "אתה הולך\nלאורך החוף.\nהגלים שקטים.",
+      },
+      during: {
+        en: "The water keeps moving.\nA sound cuts across it.\nYou keep walking.",
+        he: "המים ממשיכים לזרום.\nצליל חוצה אותם.\nאתה ממשיך ללכת.",
+      },
+      calming: {
+        en: "That sound is part of the day.\nYou're still by the water.\nYou're still safe.",
+        he: "הצליל הזה הוא חלק מהיום.\nאתה עדיין ליד המים.\nאתה עדיין בטוח.",
+      },
+    },
+  },
+  park: {
+    key: "park",
+    label: { en: "Park, evening", he: "פארק, ערב" },
+    short: { en: "Park", he: "פארק" },
+    media: {
+      still: require("@/assets/scenes/park.png"),
+    },
+    tint: { top: "#4A4A2C" },
+    voice: {
+      opening: {
+        en: "You're walking\nthrough the park.\nThe evening is soft.",
+        he: "אתה הולך\nדרך הפארק.\nהערב רך.",
+      },
+      during: {
+        en: "The trees move around you.\nA sound breaks through.\nYou keep walking.",
+        he: "העצים נעים סביבך.\nצליל פורץ.\nאתה ממשיך ללכת.",
+      },
+      calming: {
+        en: "That sound belongs to the park.\nYou're still on the path.\nYou're still safe.",
+        he: "הצליל הזה שייך לפארק.\nאתה עדיין על השביל.\nאתה עדיין בטוח.",
+      },
+    },
+  },
+  cafe: {
+    key: "cafe",
+    label: { en: "Cafe, morning", he: "בית קפה, בוקר" },
+    short: { en: "Cafe", he: "בית קפה" },
+    media: {
+      still: require("@/assets/scenes/cafe.jpg"),
+    },
+    tint: { top: "#5A3D26" },
+    voice: {
+      opening: {
+        en: "You're sitting\nin the cafe.\nThe morning is quiet.",
+        he: "אתה יושב\nבבית הקפה.\nהבוקר שקט.",
+      },
+      during: {
+        en: "The room hums around you.\nA sound rises over it.\nYou stay where you are.",
+        he: "החדר הומה סביבך.\nצליל מתרומם מעליו.\nאתה נשאר במקומך.",
+      },
+      calming: {
+        en: "That sound is part of the morning.\nYou're still in your seat.\nYou're still safe.",
+        he: "הצליל הזה הוא חלק מהבוקר.\nאתה עדיין בכיסא שלך.\nאתה עדיין בטוח.",
+      },
+    },
+  },
+  road: {
+    key: "road",
+    label: { en: "Quiet road", he: "כביש שקט" },
+    short: { en: "Quiet road", he: "כביש שקט" },
+    media: {
+      still: require("@/assets/scenes/road.jpg"),
+    },
+    tint: { top: "#3D332B" },
+    voice: {
+      opening: {
+        en: "You're walking\nthe quiet road.\nThere's space around you.",
+        he: "אתה הולך\nבכביש השקט.\nיש מרחב סביבך.",
+      },
+      during: {
+        en: "The road stretches on.\nA sound arrives.\nYou keep walking.",
+        he: "הכביש משתרע הלאה.\nצליל מגיע.\nאתה ממשיך ללכת.",
+      },
+      calming: {
+        en: "That sound passes through.\nYou're still on the road.\nYou're still safe.",
+        he: "הצליל הזה חולף.\nאתה עדיין על הכביש.\nאתה עדיין בטוח.",
+      },
+    },
+  },
+};
+
+// TODO(supabase): `sounds` table — key, labels by lang.
+// Variations live in `sound_variations` (sound_id → audio_url, duration_ms).
+const SOUNDS: Record<SoundKey, Sound> = {
+  motorcycle: {
+    key: "motorcycle",
+    label: { en: "Motorcycle", he: "אופנוע" },
+    audioVariations: [
+      require("@/assets/sounds/triggers/motorcycle/1.mp3"),
+      require("@/assets/sounds/triggers/motorcycle/2.mp3"),
+      require("@/assets/sounds/triggers/motorcycle/3.mp3"),
+      require("@/assets/sounds/triggers/motorcycle/4.mp3"),
+    ],
+  },
+  helicopter: {
+    key: "helicopter",
+    label: { en: "Helicopter", he: "מסוק" },
+    audioVariations: [
+      require("@/assets/sounds/triggers/helicopter/1.mp3"),
+      require("@/assets/sounds/triggers/helicopter/2.mp3"),
+    ],
+  },
+  fireworks: {
+    key: "fireworks",
+    label: { en: "Fireworks", he: "זיקוקים" },
+    audioVariations: [
+      require("@/assets/sounds/triggers/fireworks/1.mp3"),
+      require("@/assets/sounds/triggers/fireworks/2.mp3"),
+      require("@/assets/sounds/triggers/fireworks/3.mp3"),
+      require("@/assets/sounds/triggers/fireworks/4.mp3"),
+    ],
+  },
+  siren: {
+    key: "siren",
+    label: { en: "Siren", he: "סירנה" },
+    audioVariations: [
+      require("@/assets/sounds/triggers/siren/1.mp3"),
+      require("@/assets/sounds/triggers/siren/2.mp3"),
+      require("@/assets/sounds/triggers/siren/3.mp3"),
+    ],
+  },
+  "car-horn": {
+    key: "car-horn",
+    label: { en: "Car horn", he: "צפירת מכונית" },
+    audioVariations: [
+      require("@/assets/sounds/triggers/car-horn/1.mp3"),
+      require("@/assets/sounds/triggers/car-horn/2.mp3"),
+    ],
+  },
+  "door-slam": {
+    key: "door-slam",
+    label: { en: "Door slam", he: "דלת נטרקת" },
+    audioVariations: [
+      require("@/assets/sounds/triggers/door-slam/1.mp3"),
+      require("@/assets/sounds/triggers/door-slam/2.mp3"),
+      require("@/assets/sounds/triggers/door-slam/3.mp3"),
+      require("@/assets/sounds/triggers/door-slam/4.mp3"),
+    ],
+  },
+};
+
+export const SCENE_ORDER: SceneKey[] = ["beach", "park", "cafe", "road"];
+// Ordered roughly by how commonly users encounter each trigger in daily urban
+// life — most encountered first, so the picker reads as a familiar list.
+export const SOUND_ORDER: SoundKey[] = [
+  "motorcycle",
+  "car-horn",
+  "siren",
+  "helicopter",
+  "door-slam",
+  "fireworks",
+];
+
+// TODO(supabase): `supabase.from('scenes').select('*, scene_voice_lines(*)')`
+export function getScenes(): Scene[] {
+  return SCENE_ORDER.map((k) => SCENES[k]);
+}
+
+export function getScene(key: SceneKey): Scene {
+  return SCENES[key];
+}
+
+// TODO(supabase): `supabase.from('scene_voice_lines').select().eq('scene', scene).eq('phase', phase).eq('lang', lang).single()`
+export function getVoiceScript(scene: SceneKey, phase: Phase, lang: string): string {
+  return localize(SCENES[scene].voice[phase], lang);
+}
+
+// TODO(supabase): `supabase.from('sounds').select('*, sound_variations(*)')`
+export function getSounds(): Sound[] {
+  return SOUND_ORDER.map((k) => SOUNDS[k]);
+}
+
+export function getSound(key: SoundKey): Sound {
+  return SOUNDS[key];
+}
+
+// TODO(supabase): `user_preferences` row keyed by `auth.uid()` — scene, consented sounds,
+// learned intensity ceilings per sound.
+export function getDefaultPreferences(): Preferences {
+  // Scene default follows the device's local time of day. Once we persist
+  // user preferences (zustand-persist + storage seam), the persisted choice
+  // takes precedence and this default only applies on first launch.
+  return {
+    scene: getDefaultSceneForTimeOfDay(),
+    sounds: ["motorcycle"],
+  };
+}
+
+// ── Ambient tracks ────────────────────────────────────────────────────────
+
+/** A looping ambient soundscape asset. */
+export type AmbientTrack = {
+  key: string;
+  label: LocalizedText;
+  // TODO(supabase): `ambient_tracks` table — key, labels, cdn_url, sha256.
+  // AudioModule (require()) for the bundled fallback; string CDN URI otherwise.
+  source: AudioModule | string;
+  /** SHA-256 of the CDN file — used by asset-cache for freshness checks. */
+  sha256?: string;
+};
+
+/** Returns true when a source field is still an unresolved placeholder.
+ *  Guards against passing placeholder strings to AudioEngine.loadBuffers(). */
+export function isPlaceholderSource(source: AudioModule | string): boolean {
+  return typeof source === "string" && source.startsWith("TODO_");
+}
+
+// Bundled ambient tracks per scene — one variation is picked randomly at
+// session start so repeat sessions feel slightly different.
+// TODO(supabase): `ambient_tracks` table — replace require() with CDN URIs.
+const AMBIENT_TRACKS: Record<SceneKey, { label: LocalizedText; variations: AudioModule[] }> = {
+  beach: {
+    label: { en: "Ocean shore", he: "חוף הים" },
+    variations: [
+      require("@/assets/sounds/ambient/beach/Soothing_ocean_shore_1-1780143780490.mp3"),
+      require("@/assets/sounds/ambient/beach/Soothing_ocean_shore_2-1780143780491.mp3"),
+      require("@/assets/sounds/ambient/beach/Soothing_ocean_shore_3-1780143780491.mp3"),
+      require("@/assets/sounds/ambient/beach/Soothing_ocean_shore_4-1780143781749.mp3"),
+    ],
+  },
+  park: {
+    label: { en: "Forest ambience", he: "יער" },
+    variations: [
+      require("@/assets/sounds/ambient/forest/Immersive_outdoor_so_1-1780143574058.mp3"),
+      require("@/assets/sounds/ambient/forest/Immersive_outdoor_so_2-1780143574059.mp3"),
+      require("@/assets/sounds/ambient/forest/Immersive_outdoor_so_3-1780143574059.mp3"),
+      require("@/assets/sounds/ambient/forest/Immersive_outdoor_so_4-1780143574060.mp3"),
+    ],
+  },
+  cafe: {
+    label: { en: "Coffee shop", he: "בית קפה" },
+    variations: [
+      require("@/assets/sounds/ambient/coffee shop/Realistic_indoor_cof_1-1780143636373.mp3"),
+      require("@/assets/sounds/ambient/coffee shop/Realistic_indoor_cof_2-1780143636374.mp3"),
+      require("@/assets/sounds/ambient/coffee shop/Realistic_indoor_cof_3-1780143636374.mp3"),
+      require("@/assets/sounds/ambient/coffee shop/Realistic_indoor_cof_4-1780143637364.mp3"),
+    ],
+  },
+  road: {
+    label: { en: "City street", he: "רחוב עירוני" },
+    variations: [
+      require("@/assets/sounds/ambient/street/Steady_urban_city_st_1-1780143711219.mp3"),
+      require("@/assets/sounds/ambient/street/Steady_urban_city_st_2-1780143711220.mp3"),
+      require("@/assets/sounds/ambient/street/Steady_urban_city_st_3-1780143711220.mp3"),
+      require("@/assets/sounds/ambient/street/Steady_urban_city_st_4-1780143711220.mp3"),
+    ],
+  },
+};
+
+// TODO(supabase): `supabase.from('ambient_tracks').select('*').eq('scene', scene)`
+export function getAmbientTrack(scene: SceneKey): AmbientTrack {
+  const track = AMBIENT_TRACKS[scene];
+  const source = track.variations[Math.floor(Math.random() * track.variations.length)];
+  return { key: `ambient/${scene}`, label: track.label, source };
+}
+
+// ── Voice clips ───────────────────────────────────────────────────────────
+
+/** A pre-recorded voice clip played at specific session moments. */
+export type VoiceClip = {
+  key: "disclaimer" | "mid-session" | "wind-down";
+  label: LocalizedText;
+  // TODO(supabase): `voice_clips` table — key, lang, cdn_url, sha256, duration_ms.
+  // Source can be a bundled AudioModule or a CDN URI string (MP3/MP4).
+  source: AudioModule | string;
+  sha256?: string;
+  durationMs?: number;
+};
+
+export type VoiceClipKey = VoiceClip["key"];
+
+// Voice clip order matches the playVoiceClip(index) contract in AudioEngine:
+//   index 0 = DISCLAIMER, index 1 = MID_SESSION, index 2 = WIND_DOWN
+// TODO(asset): replace placeholder sources with actual recordings once
+// approved by the clinical team (Dudi Efrati).
+const VOICE_CLIPS: VoiceClip[] = [
+  {
+    key: "disclaimer",
+    label: {
+      en: "Session intro",
+      he: "פתיח הסשן",
+    },
+    // TODO(asset): require("@/assets/sounds/voice/disclaimer.mp3") or CDN URI
+    source: "TODO_REPLACE_WITH_DISCLAIMER_ASSET",
+  },
+  {
+    key: "mid-session",
+    label: {
+      en: "Halfway check-in",
+      he: "מחצית הסשן",
+    },
+    // TODO(asset): require("@/assets/sounds/voice/mid-session.mp3") or CDN URI
+    source: "TODO_REPLACE_WITH_MID_SESSION_ASSET",
+  },
+  {
+    key: "wind-down",
+    label: {
+      en: "Session close",
+      he: "סיום הסשן",
+    },
+    // TODO(asset): require("@/assets/sounds/voice/wind-down.mp3") or CDN URI
+    source: "TODO_REPLACE_WITH_WIND_DOWN_ASSET",
+  },
+];
+
+// TODO(supabase): `supabase.from('voice_clips').select('*').order('sort_order')`
+export function getVoiceClips(): VoiceClip[] {
+  return VOICE_CLIPS;
+}
+
+// ── Psycho-education ────────────────────────────────────────────────────────
+//
+// One-time, before-first-session content. Source: Dr. Michal Hirschman,
+// 2026-06-09 meeting (see docs/research/psychoeducation-hirschman.md). Hebrew
+// is the source language; English is the translation reviewed against the
+// clinical intent.
+
+export type PsychoEducationContent = {
+  /** Top-of-screen label, uppercase-tracked. */
+  eyebrow: LocalizedText;
+  /** Display-serif heading. */
+  heading: LocalizedText;
+  /** One paragraph per array entry — renders as separate <Text> blocks. */
+  body: LocalizedText[];
+  /** Continue / acknowledge label. */
+  continueLabel: LocalizedText;
+};
+
+// TODO(supabase): `psycho_education` table — eyebrow/heading/body/cta per lang.
+const PSYCHO_EDUCATION: PsychoEducationContent = {
+  eyebrow: {
+    en: "Before we start",
+    he: "לפני שמתחילים",
+  },
+  heading: {
+    en: "Your body is not\nbroken. It's on\nemergency settings.",
+    he: "הגוף שלך לא\nמקולקל. הוא על\nהגדרות חירום.",
+  },
+  body: [
+    {
+      en: "To understand why triggers overwhelm us, it helps to know the amygdala — a region in the brain that works as the body's smoke detector. In a moment of danger, it activates the body's emergency system instantly: heart races, breath gets shallow, tunnel vision, muscles tense, the body prepares to fight or flee.",
+      he: "כדי להבין למה טריגרים מציפים אותנו, חשוב להכיר את האמיגדלה, אזור במוח שמתפקד כ'גלאי העשן' של הגוף. במצב סכנה, האמיגדלה מפעילה מיד את מערכת החירום הפיזיולוגית. הדופק נהיה מהיר, הנשימה נהיית שטחית, לפעמים נחווה מין 'ראיית מנהרה', מתח השרירים עולה והגוף מכין אותנו לתגובת הישרדות של הילחם או ברח.",
+    },
+    {
+      en: "When we live inside danger — or under continuous threat — the nervous system makes a vital adjustment. It turns the detector's sensitivity all the way up. That's what keeps us alive.",
+      he: "כשאנו נמצאים באזור סכנה או תחת איום מתמשך, מערכת העצבים מבצעת התאמה חיונית. היא מכוונת את רגישות הגלאי למקסימום כדי לשמור עלינו ערניים.",
+    },
+    {
+      en: "The problem is that even after the threat passes and the world is safe again, the detector usually stays at maximum sensitivity. So any small reminder of the original event — a sound, a smell, a place — instantly fires the alarm. The brain signals an immediate life-threat, while the actual present is calm and safe. A false alarm.",
+      he: "הבעיה היא שגם כשהאיום חולף והסביבה חוזרת להיות בטוחה, הגלאי לרוב נשאר ברגישות שיא. במצב זה, כל גירוי קטן שמזכיר את האירוע המקורי, צליל, ריח או מקום מסוים, מקפיץ מיד את האזעקה, רק שהפעם זוהי אזעקת שווא. המוח מאותת על סכנת חיים מיידית, למרות שבמציאות הנוכחית הכל רגוע ובטוח.",
+    },
+    {
+      en: "The distress and the physical response you feel are not a sign of malfunction. They're a protection system that adapted to operate on 'emergency settings' so you could survive a chaotic and dangerous reality.",
+      he: "המצוקה והתגובה הגופנית שאתה חווה אינן מעידות על קלקול, אלא דווקא על מערכת הגנה יעילה שהתאימה את עצמה לפעול על 'הגדרות חירום' בשביל לעזור לך לשרוד בתוך מציאות כאוטית ומסוכנת.",
+    },
+    {
+      en: "In the practice that follows, gradually and in a protected space, we'll teach the system that the danger has passed — and that the sensitivity can come down.",
+      he: "בתרגיל הקרוב אנחנו נלמד את המערכת, בצורה הדרגתית ובסביבה מוגנת, שהסכנה חלפה ושניתן להוריד את הרגישות.",
+    },
+  ],
+  continueLabel: {
+    en: "I'm ready",
+    he: "אני מוכן",
+  },
+};
+
+// TODO(supabase): `supabase.from('psycho_education').select('*').eq('key', 'first-session').single()`
+export function getPsychoEducation(): PsychoEducationContent {
+  return PSYCHO_EDUCATION;
+}
+
+// ── Calming protocol ────────────────────────────────────────────────────────
+//
+// User-initiated parasympathetic-regulation flow (B-03 v1). Source: Dr. Michal
+// Hirschman, 2026-06-09 (see docs/voice-scripts/calming.md). Five steps in
+// order, no skip. Distinct from `exposure-session/voice.calming` — that's the
+// voice script *inside* a session when pulse spikes; this is the user-tapped
+// flow that *ends* a session.
+
+export type CalmingValidationStep = {
+  kind: "validation";
+  text: LocalizedText;
+  durationMs: number;
+};
+
+export type CalmingBodyGroundingStep = {
+  kind: "body-grounding";
+  text: LocalizedText;
+  durationMs: number;
+};
+
+export type CalmingBoxBreathingStep = {
+  kind: "box-breathing";
+  cycles: number;
+  phaseMs: number;
+  prompts: {
+    inhale: LocalizedText;
+    hold: LocalizedText;
+    exhale: LocalizedText;
+  };
+};
+
+export type CalmingSensoryStep = {
+  kind: "sensory-grounding";
+  steps: { count: number; prompt: LocalizedText; durationMs: number }[];
+};
+
+export type CalmingCloseStep = {
+  kind: "close";
+  text: LocalizedText;
+  durationMs: number;
+};
+
+export type CalmingProtocolStep =
+  | CalmingValidationStep
+  | CalmingBodyGroundingStep
+  | CalmingBoxBreathingStep
+  | CalmingSensoryStep
+  | CalmingCloseStep;
+
+const CALMING_PROTOCOL: CalmingProtocolStep[] = [
+  {
+    kind: "validation",
+    text: {
+      en: "It's okay. You're safe now.\n\nWhat you're feeling is anxiety, and anxiety is a wave. It rises now — it feels overwhelming — but the wave will peak, and it will fall. Your body can't hold this much tension for long. It will settle on its own.\n\nI'm here with you, inside this wave. It will pass.",
+      he: "הכל בסדר, אתה בטוח עכשיו.\n\nמה שאתה מרגיש זה התקף חרדה. חרדה היא כמו גל, היא עולה עכשיו, זה מרגיש מציף ונורא אבל הגל הזה יגיע לשיא וייחלש. הגוף שלך לא יכול להישאר במתח הזה לאורך זמן והוא יירגע מעצמו.\n\nאני איתך בתוך הגל הזה, הוא יעבור.",
+    },
+    durationMs: 18_000,
+  },
+  {
+    kind: "body-grounding",
+    text: {
+      en: "Let's come back to your body for a moment.\n\nIf you're standing, sit down. Feel your feet on the floor — feel them touching, steadily. Try to press them a little more into the floor.\n\nFeel the weight of your body in the chair.",
+      he: "בוא נחזור לרגע לגוף שלך.\n\nאם אתה עומד, שב. תרגיש את כפות הרגליים שלך נוגעות ברצפה בצורה יציבה, תנסה לדחוף אותם עוד יותר לכיוון הרצפה.\n\nתרגיש את המשקל של הגוף שלך על הכיסא.",
+    },
+    durationMs: 14_000,
+  },
+  {
+    kind: "box-breathing",
+    cycles: 2,
+    phaseMs: 4_000,
+    prompts: {
+      inhale: { en: "Breathe in", he: "שאיפה" },
+      hold: { en: "Hold", he: "החזקה" },
+      exhale: { en: "Breathe out", he: "נשיפה" },
+    },
+  },
+  {
+    kind: "sensory-grounding",
+    steps: [
+      {
+        count: 3,
+        prompt: {
+          en: "Notice 3 things\nyou can see\naround you.",
+          he: "שים לב ל-3 דברים\nשאתה יכול לראות\nברגע זה.",
+        },
+        durationMs: 9_000,
+      },
+      {
+        count: 2,
+        prompt: {
+          en: "Notice 2 sounds\nyou can hear.",
+          he: "שים לב ל-2 צלילים\nשאתה יכול לשמוע.",
+        },
+        durationMs: 9_000,
+      },
+      {
+        count: 1,
+        prompt: {
+          en: "Notice 1 texture\nyou can touch —\nyour clothing,\nthe surface near you.",
+          he: "שים לב למרקם אחד\nשאתה יכול לגעת בו —\nהבגד שלך,\nהמשטח שלידך.",
+        },
+        durationMs: 9_000,
+      },
+    ],
+  },
+  {
+    kind: "close",
+    text: {
+      en: "Take one more slow, deep breath.\n\nThe sharp wave has passed. Your body is finding its way back.\n\nThis kind of practice takes energy, and what just happened is a natural part of the process. For today, this is the place to stop. You did important work by staying. We'll continue another time.",
+      he: "קח עוד נשימה עמוקה ואיטית.\n\nהמצוקה שהרגשת הולכת ופוחתת. הגל החריף עבר והגוף שלך מתחיל לחזור לאיזון.\n\nתרגול חשיפה דורש אנרגיה ומה שקרה עכשיו הוא חלק טבעי לחלוטין מהתהליך. עבור התרגול היום זהו סימן לעצור כאן ולתת לגוף ולנפש שלך לנוח. עשית עבודה חשובה בכך שנשארת והתמודדת. אנחנו נמשיך את התרגול בפעם אחרת.",
+    },
+    durationMs: 22_000,
+  },
+];
+
+// TODO(supabase): `supabase.from('calming_protocol').select('*').order('sort_order')`
+export function getCalmingProtocol(): CalmingProtocolStep[] {
+  return CALMING_PROTOCOL;
+}
+
+// ── Clinical screening (PC-PTSD-5) ──────────────────────────────────────────
+//
+// Primary Care PTSD Screen for DSM-5 (Prins et al., 2016). Public domain,
+// distributed by the VA National Center for PTSD. EN item text is verbatim
+// from the official PDF. HE items are draft forward-translations, every one
+// marked TODO(hirschman-review) — DO NOT release a Hebrew-locale build until
+// Dr. Hirschman has signed off on these strings.
+//
+// Cutoff at score ≥ 3 (sens .95, spec .85; Prins et al., 2016) — used by
+// /screening to gate above-threshold users into a clinician-recommendation
+// outcome screen. See docs/research/clinical-screening-review.md.
+
+export type PcPtsd5Content = {
+  /** Version tag bumped whenever the wording or cutoff changes. Persisted on
+   *  every screening result so old records can be detected if the instrument
+   *  is later revised. */
+  version: string;
+  cutoff: number;
+  intro: {
+    eyebrow: LocalizedText;
+    heading: LocalizedText;
+    body: LocalizedText;
+  };
+  /** Step 1 — trauma-exposure gate. "Yes" administers the 5 items; "No"
+   *  short-circuits to the no-trauma outcome. */
+  traumaExposure: {
+    prompt: LocalizedText;
+    yes: LocalizedText;
+    no: LocalizedText;
+  };
+  /** Step 2 — the 5 PC-PTSD-5 items, asked over the past month after a
+   *  user-affirmed traumatic event. */
+  items: {
+    instructions: LocalizedText;
+    yes: LocalizedText;
+    no: LocalizedText;
+    submit: LocalizedText;
+    /** Item text. Order matches the official VA PDF (questions 1–5). */
+    questions: LocalizedText[];
+  };
+  outcomes: {
+    noTrauma: { heading: LocalizedText; body: LocalizedText; continueLabel: LocalizedText };
+    belowThreshold: { heading: LocalizedText; body: LocalizedText; continueLabel: LocalizedText };
+    aboveThreshold: {
+      heading: LocalizedText;
+      body: LocalizedText;
+      // TODO(G-01): add `mativLabel: LocalizedText` and a button affordance
+      // in screening.tsx when the Mativ referral deep-link is available.
+      continueLabel: LocalizedText;
+    };
+  };
+};
+
+// TODO(supabase): `pc_ptsd5_content` table keyed by version + lang.
+const CLINICAL_SCREENING: PcPtsd5Content = {
+  version: "pc-ptsd-5-v1-2026-06-11",
+  cutoff: 3,
+  intro: {
+    eyebrow: {
+      en: "A quick check-in",
+      // TODO(hirschman-review): HE draft pending clinical review.
+      he: "כמה שאלות לפני שמתחילים",
+    },
+    heading: {
+      en: "Five short questions\nbefore we begin.",
+      // TODO(hirschman-review)
+      he: "חמש שאלות קצרות\nלפני שמתחילים.",
+    },
+    body: {
+      en: "These help us understand what's right for you, and whether we should suggest talking to someone alongside the app. Your answers stay on this device.",
+      // TODO(hirschman-review)
+      he: "השאלות האלה עוזרות לנו להבין מה מתאים לך, ואם כדאי שנציע גם לדבר עם מישהו במקביל לאפליקציה. התשובות שלך נשארות במכשיר הזה.",
+    },
+  },
+  traumaExposure: {
+    // EN text is paraphrased from the VA PC-PTSD-5 intro (the official wording
+    // is a long enumeration of trauma examples; we condense for mobile while
+    // preserving the clinical content). The 5 symptom items below are verbatim.
+    prompt: {
+      en: "Sometimes things happen to people that are unusually frightening, horrible, or traumatic. A serious accident, a physical or sexual assault, war, seeing someone hurt or killed, losing a loved one to violence.\n\nHave you ever experienced something like that?",
+      // TODO(hirschman-review)
+      he: "לפעמים קורים לאנשים דברים מפחידים, נוראיים או טראומטיים במיוחד. תאונה חמורה, תקיפה גופנית או מינית, מלחמה, ראייה של מישהו שנפצע או נהרג, אובדן של אדם אהוב באלימות.\n\nהאם אי פעם חווית משהו כזה?",
+    },
+    yes: { en: "Yes", he: "כן" },
+    no: { en: "No", he: "לא" },
+  },
+  items: {
+    instructions: {
+      en: "In the past month, have you…",
+      // TODO(hirschman-review)
+      he: "בחודש האחרון, האם…",
+    },
+    yes: { en: "Yes", he: "כן" },
+    no: { en: "No", he: "לא" },
+    submit: {
+      en: "Done",
+      // TODO(hirschman-review)
+      he: "סיום",
+    },
+    // VA PC-PTSD-5 items, verbatim EN. HE drafted from the source.
+    questions: [
+      {
+        en: "Had nightmares about the event(s), or thought about the event(s) when you did not want to?",
+        // TODO(hirschman-review)
+        he: "היו לך סיוטים על האירוע, או חשבת עליו כשלא רצית?",
+      },
+      {
+        en: "Tried hard not to think about the event(s), or went out of your way to avoid situations that reminded you of the event(s)?",
+        // TODO(hirschman-review)
+        he: "השתדלת מאוד לא לחשוב על האירוע, או הלכת רחוק מדרכך כדי להימנע ממצבים שהזכירו לך אותו?",
+      },
+      {
+        en: "Been constantly on guard, watchful, or easily startled?",
+        // TODO(hirschman-review)
+        he: "היית כל הזמן בכוננות, ערני, או נבהלת בקלות?",
+      },
+      {
+        en: "Felt numb or detached from people, activities, or your surroundings?",
+        // TODO(hirschman-review)
+        he: "הרגשת חוסר תחושה או ניתוק מאנשים, מפעילויות או מהסביבה שלך?",
+      },
+      {
+        en: "Felt guilty or unable to stop blaming yourself or others for the event(s) or any problems the event(s) may have caused?",
+        // TODO(hirschman-review)
+        he: "הרגשת אשמה, או לא הצלחת להפסיק להאשים את עצמך או אחרים בגלל האירוע או הבעיות שנגרמו ממנו?",
+      },
+    ],
+  },
+  outcomes: {
+    noTrauma: {
+      heading: {
+        en: "Thanks for that.",
+        // TODO(hirschman-review)
+        he: "תודה.",
+      },
+      body: {
+        en: "Let's get you set up.",
+        // TODO(hirschman-review)
+        he: "בוא נכין את ההגדרות שלך.",
+      },
+      continueLabel: {
+        en: "Continue",
+        // TODO(hirschman-review)
+        he: "המשך",
+      },
+    },
+    belowThreshold: {
+      heading: {
+        en: "Thanks for that.",
+        // TODO(hirschman-review)
+        he: "תודה.",
+      },
+      body: {
+        en: "Based on what you've shared, the practice you'll find here should be a good fit. If anything changes, you can come back to this check-in from Settings.",
+        // TODO(hirschman-review)
+        he: "לפי מה ששיתפת, התרגול שכאן אמור להתאים לך. אם משהו ישתנה, תוכל לחזור לבדיקה הזו דרך ההגדרות.",
+      },
+      continueLabel: {
+        en: "Continue",
+        // TODO(hirschman-review)
+        he: "המשך",
+      },
+    },
+    aboveThreshold: {
+      heading: {
+        en: "You don't need to\ndo this alone.",
+        // TODO(hirschman-review)
+        he: "אתה לא חייב\nלעשות את זה לבד.",
+      },
+      body: {
+        en: "What you've shared sounds like something a conversation with someone trained in trauma could really help with. We work with the Mativ Institute and can put you in touch. The app is here either way. You can use it on its own, or alongside that support.",
+        // TODO(hirschman-review)
+        he: "מה ששיתפת נשמע כמו משהו ששיחה עם איש מקצוע מאומן בטראומה יכולה לעזור איתו. אנחנו עובדים עם מכון מטיב ויכולים לחבר ביניכם. האפליקציה תהיה כאן בכל מקרה. תוכל להשתמש בה בנפרד, או לצד התמיכה הזו.",
+      },
+      continueLabel: {
+        en: "Continue to the app",
+        // TODO(hirschman-review)
+        he: "המשך לאפליקציה",
+      },
+    },
+  },
+};
+
+// TODO(supabase): `supabase.from('pc_ptsd5_content').select('*').eq('version', '...').single()`
+export function getClinicalScreening(): PcPtsd5Content {
+  return CLINICAL_SCREENING;
+}
+
+/** Compute the PC-PTSD-5 outcome from raw step-1 + step-2 answers. Pure
+ *  function; the route calls this before persisting + rendering step 3. */
+export function computeClinicalScreeningOutcome(
+  traumaExposure: boolean,
+  answers: boolean[],
+  cutoff: number,
+): { score: number; outcome: "no-trauma" | "below-threshold" | "above-threshold" } {
+  if (!traumaExposure) {
+    return { score: 0, outcome: "no-trauma" };
+  }
+  const score = answers.filter(Boolean).length;
+  const outcome = score >= cutoff ? "above-threshold" : "below-threshold";
+  return { score, outcome };
+}

@@ -7,7 +7,6 @@ on:
       # Skip OTA on changes that don't affect the JS bundle.
       - "web/**"
       - "docs/**"
-      - "voice-scripts/**"
       - "openspec/**"
       - "**.md"
       - ".github/**"

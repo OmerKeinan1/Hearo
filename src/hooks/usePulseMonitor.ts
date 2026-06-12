@@ -9,7 +9,7 @@
 //   - BLE disconnect: no readings for 8 s → watchConnected = false
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { usePulse, PulsePhase } from '@/lib/pulse';
+import { usePulse, PulsePhase } from '@/lib/integrations/pulse';
 
 export type SessionState =
   | 'LOADING'
@@ -65,7 +65,7 @@ export function usePulseMonitor({
   const rawBpm = usePulse({
     active: isSessionActive && sessionState !== 'LOADING',
     phase: mockPhase,
-  });
+  }).value;
 
   // ── State ────────────────────────────────────────────────────────────────
 
@@ -140,8 +140,6 @@ export function usePulseMonitor({
   // ── BLE connectivity (reset timer on each rawBpm change) ─────────────────
 
   useEffect(() => {
-    lastReadingAt.current = Date.now();
-
     if (!watchConnectedRef.current) {
       watchConnectedRef.current = true;
       setWatchConnected(true);
@@ -165,6 +163,7 @@ export function usePulseMonitor({
   useEffect(() => {
     if (sessionState !== 'ADAPTIVE_LOOP') return;
     const baseline = sessionBaselineRef.current;
+    /* istanbul ignore next — baseline-locking effect runs before this one (same render); null is unreachable here */
     if (baseline === null) return;
 
     const isChronicHighBaseline = baseline > CHRONIC_HIGH_BPM;
@@ -225,6 +224,3 @@ export function usePulseMonitor({
     reportManualDistress,
   };
 }
-
-// Internal — used by BLE effect.
-const lastReadingAt = { current: Date.now() };

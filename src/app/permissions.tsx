@@ -5,11 +5,12 @@ import DateTimePicker, { DateTimePickerEvent } from "@react-native-community/dat
 import { useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
 
-import { CrisisAffordance } from "@/components/CrisisAffordance";
-import { Icon } from "@/components/Icon";
-import * as healthKit from "@/lib/healthKit";
-import * as reminders from "@/lib/reminders";
-import { fonts, tokens } from "@/lib/tokens";
+import { CrisisAffordance } from "@/components/features/crisis/CrisisAffordance";
+import { Icon } from "@/components/common/Icon";
+import * as healthKit from "@/lib/integrations/healthKit";
+import * as reminders from "@/lib/integrations/reminders";
+import { getClinicalScreeningResult } from "@/lib/storage/storage";
+import { fonts, tokens } from "@/lib/ui/tokens";
 
 type Status = "idle" | "granted" | "denied";
 
@@ -242,8 +243,21 @@ export default function Permissions() {
           {t("permissions.privacy")}
         </Text>
 
+        {/* B-01: clinical screening gate. First-launch users (no stored
+            screening result) go through PC-PTSD-5 before Setup; returning
+            users skip the questionnaire. The screening route itself routes
+            back to /setup (any outcome) — Above-threshold users see a
+            clinician-recommendation card first, but it's advisory, not a
+            block. See openspec/changes/add-clinical-screening/. */}
         <Pressable
-          onPress={() => router.push("/setup")}
+          onPress={async () => {
+            const prior = await getClinicalScreeningResult();
+            if (prior === undefined) {
+              router.push("/screening");
+            } else {
+              router.push("/setup");
+            }
+          }}
           hitSlop={8}
           style={{ paddingBottom: 16, opacity: canContinue ? 1 : 0.4 }}
         >

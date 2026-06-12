@@ -17,7 +17,7 @@ Final per-file coverage (lines / branches):
 
 | File | Lines | Branches | Notes |
 |---|---:|---:|---|
-| `healthKit.ts` | 100% | 100% | required `require("@/lib/healthKit.ts")` — jest-expo's default platform is iOS, so a bare import resolves `.ios.ts` |
+| `healthKit.ts` | 100% | 100% | required `require("@/lib/integrations/healthKit.ts")` — jest-expo's default platform is iOS, so a bare import resolves `.ios.ts` |
 | `trustedContacts.ts` | 100% | 100% | |
 | `reminders.ts` | 100% | 100% | |
 | `pulse.ts` | 100% | 100% | real-HR-source branches added to the existing suite |
@@ -49,13 +49,13 @@ three reasons, all the same root cause — **an unmocked native module**:
 
 | # | File | LOC | Native dependency | Existing test? |
 |---|---|---:|---|---|
-| 1 | `src/lib/healthKit.ts` | 38 | **none** (web/Android fallback stub) | no |
-| 2 | `src/lib/trustedContacts.ts` | 108 | `expo-contacts` | no (mock proven in `CrisisSheet.test.tsx`) |
-| 3 | `src/lib/reminders.ts` | 85 | `expo-notifications` | no |
-| 4 | `src/lib/pulse.ts` | 97 | `./healthKit` (real-HR branch only) | **yes — mock path only** |
-| 5 | `src/lib/asset-cache.ts` | 159 | `expo-file-system/legacy` | no |
-| 6 | `src/lib/healthKit.ios.ts` | 143 | `@kingstinct/react-native-healthkit` | no |
-| 7 | `src/lib/audio-engine.ts` | 375 | `react-native-audio-api` | no |
+| 1 | `src/lib/integrations/healthKit.ts` | 38 | **none** (web/Android fallback stub) | no |
+| 2 | `src/lib/integrations/trustedContacts.ts` | 108 | `expo-contacts` | no (mock proven in `CrisisSheet.test.tsx`) |
+| 3 | `src/lib/integrations/reminders.ts` | 85 | `expo-notifications` | no |
+| 4 | `src/lib/integrations/pulse.ts` | 97 | `./healthKit` (real-HR branch only) | **yes — mock path only** |
+| 5 | `src/lib/audio/asset-cache.ts` | 159 | `expo-file-system/legacy` | no |
+| 6 | `src/lib/integrations/healthKit.ios.ts` | 143 | `@kingstinct/react-native-healthkit` | no |
+| 7 | `src/lib/audio/audio-engine.ts` | 375 | `react-native-audio-api` | no |
 | 8 | `src/components/CrisisSheet.tsx` | 419 | `expo-contacts` (transitive, picker only) | **yes — main view + call path only** |
 
 Two important nuances the inventory above encodes:
@@ -161,8 +161,8 @@ coverageThreshold: {
   "./src/lib/**/*.{ts,tsx}": { lines: 95, branches: 90 },
   // Escape hatch ONLY if Phase 6 proves 95/90 impractical for timer/automation-
   // dense wrappers. Start as high as the suite reaches; ratchet up over time.
-  // "./src/lib/audio-engine.ts": { lines: 88, branches: 80 },
-  // "./src/lib/healthKit.ios.ts": { lines: 88, branches: 80 },
+  // "./src/lib/audio/audio-engine.ts": { lines: 88, branches: 80 },
+  // "./src/lib/integrations/healthKit.ios.ts": { lines: 88, branches: 80 },
   "./src/components/": { lines: 70, branches: 70 },
 },
 ```
