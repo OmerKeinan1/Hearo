@@ -2,7 +2,11 @@
   "expo": {
     "name": "Hearo",
     "slug": "Hearo",
-    "version": "1.0.1",
+    "version": "1.0.2",
+    "platforms": [
+      "ios",
+      "android"
+    ],
     "orientation": "portrait",
     "updates": {
       "url": "https://u.expo.dev/28a06970-0528-4ec2-9a2d-aec8b75d8757"
@@ -14,6 +18,7 @@
     "scheme": "hearo",
     "userInterfaceStyle": "automatic",
     "ios": {
+      "supportsTablet": false,
       "bundleIdentifier": "com.techheal.hearo",
       "config": {
         "usesNonExemptEncryption": false
